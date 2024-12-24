@@ -9,7 +9,7 @@ const UpcomingPayments = ({ data }) => {
           <thead>
             <tr className="bg-[#F7F9FC] text-left dark:bg-dark-2">
               <th className="min-w-[220px] px-4 py-4 font-medium text-dark dark:text-white xl:pl-7.5">
-                Name
+                Plan
               </th>
               <th className="min-w-[150px] px-4 py-4 font-medium text-dark dark:text-white">
                 Date
