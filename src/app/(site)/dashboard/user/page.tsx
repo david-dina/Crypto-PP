@@ -5,7 +5,7 @@ import ChartOne from '@/components/Charts/ChartOne';
 import WalletTable from '@/components/Wallet/walletOverview';
 import NotificationsTable from '@/components/Tables/NotificationTable';
 import UpcomingPayments from '@/components/Charts/UpcomingPayments';
-import SubscriptionsOverview from '@/components/Charts/SubscriptionOverview';
+import SubscriptionsOverview from '@/components/Subscriptions/SubscriptionOverview';
 
 
 const UserDashboard = () => {
