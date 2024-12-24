@@ -31,7 +31,7 @@ const userMenuGroups = [
       {
         icon: <span className="icon-[tabler--wallet] h-6 w-6"></span>,
         label: "Wallets",
-        route: "/dashboard/wallets",
+        route: "/wallets",
       },
       {
         icon: <span className="icon-[fa6-solid--chart-line] h-6 w-6"></span>,
