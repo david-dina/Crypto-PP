@@ -1,0 +1,92 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+model User {
+  id                        String      @id @unique @default(cuid())
+  name                      String?
+  username                  String      @unique
+  email                     String      @unique
+  emailVerified             Boolean     @default(false)
+  password                  String
+  avatarUrl                 String?
+  phoneNumber               String?
+  createdAt                 DateTime    @default(now())
+  role                      UserRole    @default(USER) // USER or BUSINESS
+  businessName              String? // Only for business accounts
+  isActive                  Boolean     @default(true) // Soft delete or toggle status
+
+  // Notifications and Preferences
+  sendEmailNotifications    Boolean     @default(true)
+  sendInAppNotifications    Boolean     @default(true)
+
+  // Security
+  verificationCode          String?
+  twoFactorEnabled          Boolean     @default(false)
+  twoFactorSecret           String?
+
+  // Wallet and Payments
+  primaryWalletId           String?     // Tracks the primary wallet for payments
+  wallets                   Wallet[]    // Multiple wallets per user
+  transactions              Transaction[]
+
+  // Logs and Sessions
+  Session                   Session[]
+  ActivityLog               ActivityLog[]
+
+  // Metadata
+  metadata                  Json?
+}
+
+enum UserRole {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+model Transaction {
+  id            String      @id @unique @default(cuid())
+  userId        String
+  amount        Float
+  currency      String   // e.g., USD, ETH
+  status        String   // pending, completed, failed
+  type          String   // deposit, withdrawal, payment
+  createdAt     DateTime @default(now())
+
+  user          User      @relation(fields: [userId], references: [id])
+}
+
+model Wallet {
+  id          String   @id @unique @default(cuid())
+  userId      String
+  address     String   @unique
+  type        String   // e.g., Ethereum, Solana
+  balance     Float    @default(0.0)
+  isPrimary   Boolean  @default(false) // Marks primary wallet for transactions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model ActivityLog {
+  id            String   @id @unique @default(cuid())
+  userId        String
+  action        String
+  timestamp     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id])
+}
