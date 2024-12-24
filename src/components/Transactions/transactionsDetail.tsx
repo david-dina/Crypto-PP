@@ -209,13 +209,19 @@ const TransactionDetails = ({ data }) => {
                   </p>
                 </td>
                 <td className="px-4 py-4">
-                  <p
-                    className={`font-medium ${
-                      item.price < 0 ? 'text-gray-500' : 'text-green-500'
-                    }`}
-                  >
-                    {item.price < 0 ? `-$${Math.abs(item.price)}` : `$${item.price}`}
-                  </p>
+                <p
+  className={`font-medium ${
+    item.price < 0 
+      ? 'text-gray-500 dark:text-white' // Gray on light mode, white on dark mode
+      : 'text-green-500 dark:text-green-400' // Green for positive values
+  }`}
+>
+  {item.price < 0 
+    ? `-$${Math.abs(item.price)}` 
+    : `$${item.price}`
+  }
+</p>
+
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {item.asset} {item.crypto}
                   </p>
