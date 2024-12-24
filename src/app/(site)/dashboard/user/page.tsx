@@ -2,15 +2,7 @@
 
 import React from 'react';
 import ChartOne from '@/components/Charts/ChartOne';
-import ChartTen from '@/components/Charts/ChartTen';
-import ChartThree from '@/components/Charts/ChartThree';
-import ChartTwo from '@/components/Charts/ChartTwo';
-import TableFour from '@/components/Tables/TableFour';
-import TableOne from '@/components/Tables/TableOne';
-import TableSix from '@/components/Tables/TableSix';
-import TableThree from '@/components/Tables/TableThree';
-import TableTwo from '@/components/Tables/TableTwo';
-import WalletTable from '@/components/Tables/WalletTable'
+import WalletTable from '@/components/Wallet/walletOverview';
 import NotificationsTable from '@/components/Tables/NotificationTable';
 import UpcomingPayments from '@/components/Charts/UpcomingPayments';
 import SubscriptionsOverview from '@/components/Charts/SubscriptionOverview';
