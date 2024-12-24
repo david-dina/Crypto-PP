@@ -23,11 +23,7 @@ const userMenuGroups = [
         label: "Dashboard",
         route: "/dashboard",
       },
-      {
-        icon: <span className="icon-[mdi--library-books] h-6 w-6"></span>,
-        label: "Subscriptions",
-        route: "/subscriptions",
-      },
+      
       {
         icon: <span className="icon-[tabler--wallet] h-6 w-6"></span>,
         label: "Wallets",
@@ -37,6 +33,11 @@ const userMenuGroups = [
         icon: <span className="icon-[fa6-solid--chart-line] h-6 w-6"></span>,
         label: "Transactions",
         route: "/transactions",
+      },
+      {
+        icon: <span className="icon-[mdi--library-books] h-6 w-6"></span>,
+        label: "Subscriptions",
+        route: "/subscriptions",
       },
       {
         icon: <span className="icon-[ri--settings-4-line] h-6 w-6"></span>,
