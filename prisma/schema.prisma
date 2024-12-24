@@ -15,6 +15,7 @@ model Session {
   expiresAt DateTime
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 model User {
   id                        String      @id @unique @default(cuid())
   name                      String?
@@ -42,6 +43,7 @@ model User {
   primaryWalletId           String?     // Tracks the primary wallet for payments
   wallets                   Wallet[]    // Multiple wallets per user
   transactions              Transaction[]
+  subscriptions             Subscription[] // New subscriptions relation
 
   // Logs and Sessions
   Session                   Session[]
@@ -60,13 +62,15 @@ enum UserRole {
 model Transaction {
   id            String      @id @unique @default(cuid())
   userId        String
+  subscriptionId String?    // Tracks the related subscription if applicable
   amount        Float
   currency      String   // e.g., USD, ETH
   status        String   // pending, completed, failed
-  type          String   // deposit, withdrawal, payment
+  type          String   // deposit, withdrawal, payment, refund
   createdAt     DateTime @default(now())
 
   user          User      @relation(fields: [userId], references: [id])
+  subscription  Subscription? @relation(fields: [subscriptionId], references: [id])
 }
 
 model Wallet {
@@ -89,4 +93,55 @@ model ActivityLog {
   timestamp     DateTime @default(now())
 
   user          User     @relation(fields: [userId], references: [id])
+}
+
+//
+// NEW MODELS FOR SUBSCRIPTIONS AND TIERS
+//
+
+model Company {
+  id              String      @id @unique @default(cuid())
+  name            String
+  currency        String      @default("USD") // Preferred currency
+  acceptedCoins   String[]    // List of accepted coins, e.g., ["ETH", "BTC"]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  plans           Plan[]
+  subscriptions   Subscription[]
+}
+
+model Plan {
+  id              String      @id @unique @default(cuid())
+  companyId       String
+  name            String      // Plan name (e.g., "Pro Plan")
+  price           Float       // Price in the company's preferred currency
+  billingCycles   String[]    // e.g., ["monthly", "annual"]
+  isTiered        Boolean     @default(false) // Whether this plan has tiers
+  tierGroupId     String?     // Used to group tiers together
+  position        Int?        // Position of tier (e.g., 1 for Basic, 2 for Premium)
+  features        Json?       // JSON object for feature-specific data
+
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id              String      @id @unique @default(cuid())
+  userId          String
+  companyId       String
+  planId          String
+  billingCycle    String      // "monthly", "annual"
+  coinType        String      // Payment coin type (e.g., "ETH", "BTC")
+  coinAmount      Float       // Amount paid in crypto
+  startDate       DateTime
+  renewalDate     DateTime
+  status          String      // "Active", "Cancelled", "Expired"
+  tierGroupId     String?     // Tracks the group if the plan has tiers
+  createdAt       DateTime    @default(now())
+
+  user            User        @relation(fields: [userId], references: [id])
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan            Plan        @relation(fields: [planId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
 }
