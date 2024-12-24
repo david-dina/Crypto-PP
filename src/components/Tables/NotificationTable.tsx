@@ -24,12 +24,13 @@ const notificationsData: Package[] = [
 const NotificationsTable = () => {
   return (
     <div className="rounded-[10px] border border-stroke bg-white p-4 shadow-1 dark:border-dark-3 dark:bg-gray-dark dark:shadow-card sm:p-7.5">
+      <h4 className="text-lg font-bold text-dark dark:text-white mb-4">Notifications</h4>
       <div className="max-w-full overflow-x-auto">
         <table className="w-full table-auto">
           <thead>
             <tr className="bg-[#F7F9FC] text-left dark:bg-dark-2">
               <th className="min-w-[220px] px-4 py-4 font-medium text-dark dark:text-white xl:pl-7.5">
-                Notification
+                Type
               </th>
               <th className="min-w-[150px] px-4 py-4 font-medium text-dark dark:text-white">
                 Date
@@ -81,9 +82,10 @@ const NotificationsTable = () => {
                   className={`border-[#eee] px-4 py-4 dark:border-dark-3 xl:pr-7.5 ${index === notificationsData.length - 1 ? "border-b-0" : "border-b"}`}
                 >
                   <div className="flex items-center justify-end space-x-3.5">
-                    <button className="hover:text-primary">
-                      View
-                    </button>
+                    {//<button className="hover:text-primary">
+                     // View
+                    //</button>
+                    }
                     <button className="hover:text-primary">
                       Dismiss
                     </button>
