@@ -59,7 +59,7 @@ const UserDashboard = () => {
   ];
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold mb-6">Test Components</h1>
+      <h1 className="text-2xl font-bold mb-6">Welcome, David</h1>
         <WalletTable/>
         <NotificationsTable></NotificationsTable>
         <SubscriptionsOverview data= {subscriptionsOverviewData}></SubscriptionsOverview>
