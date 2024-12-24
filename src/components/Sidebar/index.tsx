@@ -23,7 +23,6 @@ const userMenuGroups = [
         label: "Dashboard",
         route: "/dashboard",
       },
-      
       {
         icon: <span className="icon-[tabler--wallet] h-6 w-6"></span>,
         label: "Wallets",
