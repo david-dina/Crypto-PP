@@ -18,6 +18,16 @@ export default function Signup() {
       </div>
 
       <SignupWithPassword />
+      {/* Business Signup Link */}
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+        Are you a business?{" "}
+        <a
+          href="/auth/business-signup"
+          className="text-primary hover:underline"
+        >
+          Create a Business Account
+        </a>
+      </div>
 
       <div className="mt-4.5 text-center font-medium">
         <p>
