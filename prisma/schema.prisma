@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -17,131 +17,111 @@ model Session {
 }
 
 model User {
-  id                        String      @id @unique @default(cuid())
-  name                      String?
-  username                  String      @unique
-  email                     String      @unique
-  emailVerified             Boolean     @default(false)
-  password                  String
-  avatarUrl                 String?
-  phoneNumber               String?
-  createdAt                 DateTime    @default(now())
-  role                      UserRole    @default(USER) // USER or BUSINESS
-  businessName              String? // Only for business accounts
-  isActive                  Boolean     @default(true) // Soft delete or toggle status
+  id                     String         @id @unique @default(cuid())
+  name                   String?
+  username               String         @unique
+  email                  String         @unique
+  emailVerified          Boolean        @default(false)
+  password               String
+  avatarUrl              String?
+  phoneNumber            String?
+  createdAt              DateTime       @default(now())
+  role                   UserRole       @default(USER)
+  businessName           String?
+  isActive               Boolean        @default(true)
+  sendEmailNotifications Boolean        @default(true)
+  sendInAppNotifications Boolean        @default(true)
+  verificationCode       String?
+  twoFactorEnabled       Boolean        @default(false)
+  twoFactorSecret        String?
+  primaryWalletId        String?
+  metadata               Json?
+  ActivityLog            ActivityLog[]
+  Session                Session[]
+  subscriptions          Subscription[]
+  transactions           Transaction[]
+  wallets                Wallet[]
+}
 
-  // Notifications and Preferences
-  sendEmailNotifications    Boolean     @default(true)
-  sendInAppNotifications    Boolean     @default(true)
+model Transaction {
+  id             String        @id @unique @default(cuid())
+  userId         String
+  subscriptionId String?
+  amount         Float
+  currency       String
+  status         String
+  type           String
+  createdAt      DateTime      @default(now())
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+}
 
-  // Security
-  verificationCode          String?
-  twoFactorEnabled          Boolean     @default(false)
-  twoFactorSecret           String?
+model Wallet {
+  id        String   @id @unique @default(cuid())
+  userId    String
+  address   String   @unique
+  type      String
+  balance   Float    @default(0.0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
 
-  // Wallet and Payments
-  primaryWalletId           String?     // Tracks the primary wallet for payments
-  wallets                   Wallet[]    // Multiple wallets per user
-  transactions              Transaction[]
-  subscriptions             Subscription[] // New subscriptions relation
+model ActivityLog {
+  id        String   @id @unique @default(cuid())
+  userId    String
+  action    String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
 
-  // Logs and Sessions
-  Session                   Session[]
-  ActivityLog               ActivityLog[]
+model Company {
+  id            String         @id @unique @default(cuid())
+  name          String
+  currency      String         @default("USD")
+  acceptedCoins String[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  plans         Plan[]
+  subscriptions Subscription[]
+}
 
-  // Metadata
-  metadata                  Json?
+model Plan {
+  id            String         @id @unique @default(cuid())
+  companyId     String
+  name          String
+  price         Float
+  billingCycles String[]
+  isTiered      Boolean        @default(false)
+  tierGroupId   String?
+  position      Int?
+  features      Json?
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id           String        @id @unique @default(cuid())
+  userId       String
+  companyId    String
+  planId       String
+  billingCycle String
+  coinType     String
+  coinAmount   Float
+  startDate    DateTime
+  renewalDate  DateTime
+  status       String
+  tierGroupId  String?
+  createdAt    DateTime      @default(now())
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan         Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
 }
 
 enum UserRole {
   USER
   BUSINESS
   ADMIN
-}
-
-model Transaction {
-  id            String      @id @unique @default(cuid())
-  userId        String
-  subscriptionId String?    // Tracks the related subscription if applicable
-  amount        Float
-  currency      String   // e.g., USD, ETH
-  status        String   // pending, completed, failed
-  type          String   // deposit, withdrawal, payment, refund
-  createdAt     DateTime @default(now())
-
-  user          User      @relation(fields: [userId], references: [id])
-  subscription  Subscription? @relation(fields: [subscriptionId], references: [id])
-}
-
-model Wallet {
-  id          String   @id @unique @default(cuid())
-  userId      String
-  address     String   @unique
-  type        String   // e.g., Ethereum, Solana
-  balance     Float    @default(0.0)
-  isPrimary   Boolean  @default(false) // Marks primary wallet for transactions
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user        User     @relation(fields: [userId], references: [id])
-}
-
-model ActivityLog {
-  id            String   @id @unique @default(cuid())
-  userId        String
-  action        String
-  timestamp     DateTime @default(now())
-
-  user          User     @relation(fields: [userId], references: [id])
-}
-
-//
-// NEW MODELS FOR SUBSCRIPTIONS AND TIERS
-//
-
-model Company {
-  id              String      @id @unique @default(cuid())
-  name            String
-  currency        String      @default("USD") // Preferred currency
-  acceptedCoins   String[]    // List of accepted coins, e.g., ["ETH", "BTC"]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  plans           Plan[]
-  subscriptions   Subscription[]
-}
-
-model Plan {
-  id              String      @id @unique @default(cuid())
-  companyId       String
-  name            String      // Plan name (e.g., "Pro Plan")
-  price           Float       // Price in the company's preferred currency
-  billingCycles   String[]    // e.g., ["monthly", "annual"]
-  isTiered        Boolean     @default(false) // Whether this plan has tiers
-  tierGroupId     String?     // Used to group tiers together
-  position        Int?        // Position of tier (e.g., 1 for Basic, 2 for Premium)
-  features        Json?       // JSON object for feature-specific data
-
-  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  subscriptions   Subscription[]
-}
-
-model Subscription {
-  id              String      @id @unique @default(cuid())
-  userId          String
-  companyId       String
-  planId          String
-  billingCycle    String      // "monthly", "annual"
-  coinType        String      // Payment coin type (e.g., "ETH", "BTC")
-  coinAmount      Float       // Amount paid in crypto
-  startDate       DateTime
-  renewalDate     DateTime
-  status          String      // "Active", "Cancelled", "Expired"
-  tierGroupId     String?     // Tracks the group if the plan has tiers
-  createdAt       DateTime    @default(now())
-
-  user            User        @relation(fields: [userId], references: [id])
-  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  plan            Plan        @relation(fields: [planId], references: [id], onDelete: Cascade)
-  transactions    Transaction[]
 }
