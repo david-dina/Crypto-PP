@@ -1,5 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -26,20 +26,20 @@ model User {
   phoneNumber            String?
   createdAt              DateTime       @default(now())
   role                   UserRole       @default(USER)
-  businessName           String?
   isActive               Boolean        @default(true)
   sendEmailNotifications Boolean        @default(true)
   sendInAppNotifications Boolean        @default(true)
   verificationCode       String?
   twoFactorEnabled       Boolean        @default(false)
   twoFactorSecret        String?
-  primaryWalletId        String?
+  primaryWalletId        String?        @unique
   metadata               Json?
   ActivityLog            ActivityLog[]
   Session                Session[]
   subscriptions          Subscription[]
   transactions           Transaction[]
   wallets                Wallet[]
+  Company                Company[]
 }
 
 model Transaction {
@@ -57,14 +57,14 @@ model Transaction {
 
 model Wallet {
   id        String   @id @unique @default(cuid())
-  userId    String
-  address   String   @unique
-  type      String
+  address   String   @unique // Wallet address
   balance   Float    @default(0.0)
-  isPrimary Boolean  @default(false)
+  userId    String? // Links to a user
+  companyId String? // Links to a company
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  User      User?    @relation(fields: [userId], references: [id]) // User's wallet
+  Company   Company? @relation(fields: [companyId], references: [id]) // Company's wallet
 }
 
 model ActivityLog {
@@ -76,14 +76,19 @@ model ActivityLog {
 }
 
 model Company {
-  id            String         @id @unique @default(cuid())
-  name          String
-  currency      String         @default("USD")
-  acceptedCoins String[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  plans         Plan[]
-  subscriptions Subscription[]
+  id              String         @id @unique @default(cuid())
+  name            String
+  currency        String         @default("USD")
+  category        String
+  acceptedCoins   String[]
+  primaryWalletId String?        @unique
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  ownerId         String
+  owner           User           @relation(fields: [ownerId], references: [id],onDelete: Cascade)
+  plans           Plan[]
+  subscriptions   Subscription[]
+  Wallet          Wallet[]
 }
 
 model Plan {
@@ -98,6 +103,14 @@ model Plan {
   features      Json?
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
+  TierGroup     TierGroup?     @relation(fields: [tierGroupId], references: [id])
+}
+
+model TierGroup {
+  id       String @id @unique @default(cuid())
+  name     String
+  features Json
+  plans    Plan[]
 }
 
 model Subscription {

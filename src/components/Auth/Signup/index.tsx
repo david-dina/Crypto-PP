@@ -22,7 +22,7 @@ export default function Signup() {
       <div className="text-center text-sm text-gray-500 dark:text-gray-400">
         Are you a business?{" "}
         <a
-          href="/auth/business-signup"
+          href="/auth/business/signup"
           className="text-primary hover:underline"
         >
           Create a Business Account

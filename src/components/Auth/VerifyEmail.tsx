@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {useState,useEffect} from "react";
 import { UserVerifyData } from "@/types/UserVerifyData"
+import { revalidatePath } from "next/cache"; // Cache invalidation
 //import Loader from "@/components/common/Loader";
 
 export default function VerifyEmail({length}:{length:number}) {
@@ -20,8 +21,10 @@ export default function VerifyEmail({length}:{length:number}) {
   const handleSubmit = () => {
     const enteredCode = inputValues.join("");
     if (enteredCode === data?.verificationCode) {
-        fetch('/api/verify/user',{method:"POST"}).then((e)=>{toast.success("Verified Successfully");console.log("pushing")}).catch((e)=>{console.log(e)})
-        return router.push("/")
+      toast.success("Verified Successfully");
+      fetch('/api/verify/user',{method:"POST"}).catch((e)=>{console.log(e)})
+        
+      return router.push("/")
     } else {
         toast.error("The Code is Invalid")
         console.log("The Code is Invalid: " + data?.verificationCode);
