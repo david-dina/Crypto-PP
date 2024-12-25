@@ -17,20 +17,6 @@ export const POST = async (req: Request) => {
       emailVerified: true,
     },
   });
-  fetch('https://api.musicaicentral.com/api/user/email/verify', {
-  method: 'POST',
-  headers: {
-    'Authorization': `${user.aiToken}`,
-  },
-  // body: JSON.stringify({}), // Optional: include body if needed
-})
-.then(response => response.json())
-.then(data => {
-  console.log(data);
-})
-.catch(err => {
-  console.error(err?.message || 'An error occurred');
-});
   console.log(user.email, "- FOUND");
   lucia.invalidateUserSessions(user.id)
   lucia.createSession(user.id, {}, { sessionId });

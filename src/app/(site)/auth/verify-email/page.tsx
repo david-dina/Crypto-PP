@@ -1,12 +1,6 @@
-import React from "react";
-import { Metadata } from "next";
 import VerifyEmail from "@/components/Auth/VerifyEmail";
 
-export const metadata: Metadata = {
-  title: `Music.AI Email Verification Page`,
-  description: ``,
-};
-
+// Verification Page Component
 const VerificationPage: React.FC = () => {
   return (
     <div className="overflow-hidden bg-gray-4 px-4 dark:bg-dark-2 sm:px-8">

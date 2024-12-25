@@ -4,18 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {useState,useEffect} from "react";
+import { UserVerifyData } from "@/types/UserVerifyData"
 //import Loader from "@/components/common/Loader";
 
-
-interface UserData {
-  email: string;
-  emailVerified: boolean;
-  verificationCode: string;
-}
-
-export default function VerifyEmail({ length, }: { length:number}) {
-  const [data, setData] = useState<UserData | null>(null);
+export default function VerifyEmail({length}:{length:number}) {
   const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<UserVerifyData | null>(null);
   const router = useRouter();
   const [inputValues, setInputValues] = useState(Array(length).fill(''));
 
@@ -89,9 +83,8 @@ useEffect(() => {
         console.log(errorData.message);
         return router.push('/auth/signin')
       }
-      const userData: UserData = await response.json();
+      const userData: UserVerifyData = await response.json();
       if (userData.emailVerified) {
-        toast.success("User Already Verified... Redirecting");
         router.push("/");
       } else {
         setData(userData);

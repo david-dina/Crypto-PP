@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import generateRandomString from "@/hooks/generateRandomString";
+import generateRandomString from "@/libs/generateRandomString";
 
 const SignupWithPassword = () => {
   const [data, setData] = useState({
