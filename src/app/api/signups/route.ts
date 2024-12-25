@@ -1,21 +1,21 @@
-import { prisma } from "@/libs/prismaDb";
-import { lucia } from "@/auth";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import bcrypt from "bcrypt";
+import { prisma } from "@/libs/prismaDb"; // Prisma database client
+import { lucia } from "@/auth"; // Lucia authentication setup
+import { cookies } from "next/headers"; // For cookie handling
+import { revalidatePath } from "next/cache"; // Cache invalidation
+import bcrypt from "bcrypt"; // For password hashing
 
 export const POST = async (req: Request) => {
   try {
-    // Parse incoming data
+    // 1. Parse incoming JSON data
     const body = await req.json();
-    const { name, username, email, password,code } = body;
+    const { name, username, email, password, code } = body;
 
-    // Validation
+    // 2. Validate required fields
     if (!name || !username || !email || !password || !code) {
       return new Response("All fields are required!", { status: 400 });
     }
 
-    // Check if username already exists
+    // 3. Check if the username already exists
     const existingUser = await prisma.user.findUnique({
       where: { username },
     });
@@ -23,7 +23,7 @@ export const POST = async (req: Request) => {
       return new Response("Username already taken!", { status: 409 });
     }
 
-    // Check if email already exists
+    // 4. Check if the email already exists
     const existingEmail = await prisma.user.findUnique({
       where: { email },
     });
@@ -31,23 +31,25 @@ export const POST = async (req: Request) => {
       return new Response("Email already registered!", { status: 409 });
     }
 
-    // Hash password
+    // 5. Hash password securely using bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
+    // 6. Create a new user record in the database
     const newUser = await prisma.user.create({
       data: {
         name,
         username,
         email,
         password: hashedPassword,
-        verificationCode:code
+        verificationCode: code, // Store the verification code for email validation
       },
     });
 
-    // Create session
+    // 7. Generate a new session using Lucia authentication
     const session = await lucia.createSession(newUser.id, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
+
+    // 8. Set session cookie in the browser
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
@@ -56,15 +58,17 @@ export const POST = async (req: Request) => {
 
     revalidatePath("/");
 
+    // 10. Log successful account creation
     console.log(`${email} - ACCOUNT CREATED`);
 
-    // Return user ID in response
+    // 11. Return success response with user ID
     return new Response(JSON.stringify({ userId: newUser.id }), {
       status: 201,
+      headers: { "Content-Type": "application/json" }, // Set JSON header
     });
   } catch (error) {
-    console.error(error);
+    // 12. Handle errors and send server error response
+    console.error("Error creating user:", error);
     return new Response("Something went wrong!", { status: 500 });
   }
 };
-
