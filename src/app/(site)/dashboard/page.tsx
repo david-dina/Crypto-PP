@@ -1,27 +1,69 @@
+
 import { Metadata } from "next";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import React from "react";
+import { redirect } from "next/navigation";
 
-// Import dashboards
+// Import Dashboards
 import UserDashboard from "./user/page";
-import BusinessDashboard from "./business/page";
+//import BusinessDashboard from "./dashboard/business/page";
+//import AdminDashboard from "./dashboard/admin/page"; // Import Admin Dashboard
 
-// Hooks
-import useLocalStorage from "@/hooks/useLocalStorage";
+// Import Lucia Auth and Prisma
+import { lucia } from "@/auth";
+import { prisma } from "@/libs/prismaDb";
+import { cookies } from "next/headers";
 
+// Metadata for SEO
 export const metadata: Metadata = {
-  title: "Dashboard - Crypto Payments Platform",
+  title: "Crypto Payments Dashboard",
   description: "Dashboard for managing subscriptions, payments, and analytics.",
 };
 
-export default function DashboardPage() {
-  // Role-based rendering
-  //const [role] = useLocalStorage("userRole", "USER");
-  
+// Define Dashboard Page
+export default async function DashboardPage() {
+  let role = "USER"; // Default role
 
+  try {
+    // Authenticate User with Lucia
+    const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+    if (!sessionId) {
+      return redirect("/auth/signin");
+    }
+
+    if (sessionId) {
+      // Validate session and fetch user details
+      const { user } = await lucia.validateSession(sessionId);
+
+      if (user) {
+        // Fetch user data from Prisma for role
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id }, // Match Lucia session ID
+          select: { role: true }, // Only fetch the 'role'
+        });
+
+        // If user exists, update the role
+        if (dbUser) {
+          role = dbUser.role; // Set role to USER, BUSINESS, or ADMIN
+        }
+      }else{
+
+      }
+    }
+  } catch (error) {
+    console.error("Authentication Error:", error);
+  }
+
+  // Render dashboard based on the role
   return (
     <DefaultLayout>
-      <UserDashboard></UserDashboard>
+      {role === "BUSINESS" ? (
+        <UserDashboard/>
+      ) : role === "ADMIN" ? (
+        <UserDashboard/>
+      ) : (
+        <UserDashboard />
+      )}
     </DefaultLayout>
   );
 }
