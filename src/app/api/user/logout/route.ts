@@ -11,6 +11,6 @@ export async function POST(req: NextRequest) {
     const sessions = await lucia.getUserSessions(user.id);
     const sessionCookie = lucia.createBlankSessionCookie();
 	cookies().set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-    revalidatePath("/")
+    revalidatePath("/dashboard")
     return NextResponse.json({ message: "Successfull" }, { status: 200 });
 }
