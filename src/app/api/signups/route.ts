@@ -8,10 +8,10 @@ export const POST = async (req: Request) => {
   try {
     // Parse incoming data
     const body = await req.json();
-    const { name, username, email, password } = body;
+    const { name, username, email, password,code } = body;
 
     // Validation
-    if (!name || !username || !email || !password) {
+    if (!name || !username || !email || !password || !code) {
       return new Response("All fields are required!", { status: 400 });
     }
 
@@ -41,6 +41,7 @@ export const POST = async (req: Request) => {
         username,
         email,
         password: hashedPassword,
+        verificationCode:code
       },
     });
 

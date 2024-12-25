@@ -2,121 +2,114 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import generateRandomString from "@/hooks/generateRandomString";
 
 const SignupWithPassword = () => {
   const [data, setData] = useState({
     name: "",
-    username: "",
     email: "",
+    username: "",
     password: "",
     reEnterPassword: "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [checkingUsername, setCheckingUsername] = useState(false); // Tracks username check state
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<null | boolean>(
     null
   ); // Tracks username availability
 
-  const { name, username, email, password, reEnterPassword } = data;
+  const { name, email, username, password, reEnterPassword } = data;
   const router = useRouter();
 
-  // Handle input change
+  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     // Update form data
-    setData((prev) => ({
-      ...prev,
+    setData({
+      ...data,
       [name]: value,
-    }));
+    });
 
-    // Trigger username check only if the field is username
+    // Reset availability when username changes
     if (name === "username") {
-      setUsernameAvailable(null); // Reset availability
-      if (value.trim().length > 0) {
-        checkUsername(value); // Call username checker
-      }
+      setUsernameAvailable(null); // Reset availability status
     }
   };
 
-  // Check username availability
-  const checkUsername = async (username: string) => {
-    setCheckingUsername(true); // Start loading
-    try {
-      const res = await axios.get(
-        `${process.env.DATABASE_SITE_URL}/check-username?username=${username}`
-      );
+  // Debounced Username Check
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      if (username.trim() !== "") {
+        checkUsernameAvailability(username);
+      }
+    }, 500); // 500ms delay
 
-      // Assume endpoint returns { available: true/false }
-      setUsernameAvailable(res.data.available);
+    return () => clearTimeout(delay); // Cleanup if the user types again
+  }, [username]); // Runs whenever username changes
+
+  // Check username availability
+  const checkUsernameAvailability = async (username: string) => {
+    setCheckingUsername(true); // Start checking
+    try {
+      const res = await axios.get(`/api/signups/usernames?username=${username}`);
+      setUsernameAvailable(res.data.available); // Set availability
     } catch (error) {
-      console.error(error);
-      setUsernameAvailable(false); // Treat errors as "username not available"
+      console.error("Error checking username:", error);
+      setUsernameAvailable(false); // Assume taken on error
+    } finally {
+      setCheckingUsername(false); // End checking
     }
-    setCheckingUsername(false); // End loading
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validation
-    if (
-      !name.trim() ||
-      !username.trim() ||
-      !email ||
-      !password ||
-      !reEnterPassword
-    ) {
+    // Validate fields
+    if (!name.trim() || !email || !username || !password || !reEnterPassword) {
       return toast.error("Please fill in all fields!");
     }
-
     if (password !== reEnterPassword) {
-      return toast.error("Passwords do not match!");
+      return toast.error("Passwords do not match");
     }
-
     if (!usernameAvailable) {
-      return toast.error("Username is already taken!");
+      return toast.error("Username is not available!");
     }
 
     setLoading(true);
+    const code = generateRandomString();
     try {
-      const res = await axios.post(`${process.env.DATABASE_SITE_URL}/signup`, {
+      const res = await axios.post(`/api/signups`, {
         name,
         username,
         email,
         password,
+        code,
       });
 
-      const { userId } = res.data;
-
       if (res.status === 200 || res.status === 201) {
-        toast.success("User has been registered!");
+        toast.success("Successfully Registered.");
         setLoading(false);
-
-        // Redirect to email verification
-        await fetch(`/api/signup?userId=${userId}`);
         return router.push("/auth/verify-email");
       } else {
         toast.error(res.data.message);
-        setLoading(false);
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "An error occurred");
+      console.error(error.response.data);
+      toast.error(error.response.data.message);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      {/* Full Name */}
+      {/* Name Input */}
       <div className="mb-4">
-        <label
-          htmlFor="name"
-          className="mb-2.5 block font-medium text-dark dark:text-white"
-        >
-          Full Name
+        <label htmlFor="name" className="mb-2.5 block font-medium text-dark dark:text-white">
+          Name
         </label>
         <input
           type="text"
@@ -124,56 +117,37 @@ const SignupWithPassword = () => {
           value={name}
           name="name"
           onChange={handleChange}
-          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] pl-6 pr-11 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] px-6 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white"
         />
       </div>
 
-      {/* Username */}
+      {/* Username Input */}
       <div className="mb-4">
-        <label
-          htmlFor="username"
-          className="mb-2.5 block font-medium text-dark dark:text-white"
-        >
+        <label htmlFor="username" className="mb-2.5 block font-medium text-dark dark:text-white">
           Username
         </label>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Choose a username"
-            value={username}
-            name="username"
-            onChange={handleChange}
-            className={`w-full rounded-lg border py-[15px] pl-6 pr-11 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary ${
-              usernameAvailable === false
-                ? "border-red-500 focus:border-red-500"
-                : usernameAvailable === true
-                ? "border-green-500 focus:border-green-500"
-                : "border-stroke"
-            }`}
-          />
-          {checkingUsername && (
-            <span className="absolute right-4.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
-              Checking...
-            </span>
-          )}
-          {usernameAvailable !== null && !checkingUsername && (
-            <span
-              className={`absolute right-4.5 top-1/2 -translate-y-1/2 ${
-                usernameAvailable ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {usernameAvailable ? "✓ Available" : "✗ Taken"}
-            </span>
-          )}
+        <input
+          type="text"
+          placeholder="Enter a username"
+          value={username}
+          name="username"
+          onChange={handleChange}
+          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] px-6 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+        />
+        <div className="mt-1 text-sm">
+          {checkingUsername ? (
+            <span className="text-gray-500 dark:text-gray-400">Checking availability...</span>
+          ) : usernameAvailable === true ? (
+            <span className="text-green-500">Username is available!</span>
+          ) : usernameAvailable === false ? (
+            <span className="text-red-500">Username is already taken.</span>
+          ) : null}
         </div>
       </div>
 
-      {/* Email */}
+      {/* Email Input */}
       <div className="mb-4">
-        <label
-          htmlFor="email"
-          className="mb-2.5 block font-medium text-dark dark:text-white"
-        >
+        <label htmlFor="email" className="mb-2.5 block font-medium text-dark dark:text-white">
           Email
         </label>
         <input
@@ -182,16 +156,13 @@ const SignupWithPassword = () => {
           value={email}
           name="email"
           onChange={handleChange}
-          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] pl-6 pr-11 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] px-6 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white"
         />
       </div>
 
-      {/* Password */}
+      {/* Password Input */}
       <div className="mb-4">
-        <label
-          htmlFor="password"
-          className="mb-2.5 block font-medium text-dark dark:text-white"
-        >
+        <label htmlFor="password" className="mb-2.5 block font-medium text-dark dark:text-white">
           Password
         </label>
         <input
@@ -200,17 +171,14 @@ const SignupWithPassword = () => {
           value={password}
           name="password"
           onChange={handleChange}
-          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] pl-6 pr-11 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] px-6 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white"
         />
       </div>
 
-      {/* Confirm Password */}
-      <div className="mb-6">
-        <label
-          htmlFor="reEnterPassword"
-          className="mb-2.5 block font-medium text-dark dark:text-white"
-        >
-          Re-enter Password
+      {/* Re-Enter Password Input */}
+      <div className="mb-4">
+        <label htmlFor="reEnterPassword" className="mb-2.5 block font-medium text-dark dark:text-white">
+          Re-type Password
         </label>
         <input
           type="password"
@@ -218,7 +186,7 @@ const SignupWithPassword = () => {
           value={reEnterPassword}
           name="reEnterPassword"
           onChange={handleChange}
-          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] pl-6 pr-11 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          className="w-full rounded-lg border border-stroke bg-transparent py-[15px] px-6 font-medium text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white"
         />
       </div>
 
@@ -226,23 +194,14 @@ const SignupWithPassword = () => {
       <div className="mb-5">
         <button
           type="submit"
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary p-4 font-medium text-white transition hover:bg-opacity-90"
+          disabled={loading || checkingUsername}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary p-4 font-medium text-white transition hover:bg-opacity-90"
         >
-          Create account
+          Create Account
           {loading && (
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent"></span>
           )}
         </button>
-      </div>
-      {/* Business Signup Link */}
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        Are you a business?{" "}
-        <a
-          href="/auth/business-signup"
-          className="text-primary hover:underline"
-        >
-          Create a Business Account
-        </a>
       </div>
     </form>
   );
