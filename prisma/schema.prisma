@@ -115,6 +115,7 @@ model TierGroup {
 
 model Subscription {
   id           String        @id @unique @default(cuid())
+  name         String        // Add a name field for display purposes
   userId       String
   companyId    String
   planId       String
@@ -126,11 +127,14 @@ model Subscription {
   status       String
   tierGroupId  String?
   createdAt    DateTime      @default(now())
+
+  // Relations
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   plan         Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
   user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
 }
+
 
 enum UserRole {
   USER

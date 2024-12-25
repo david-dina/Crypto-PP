@@ -11,11 +11,8 @@ export const lucia = new Lucia(adapter, {
       name:attribute.name,
       email:attribute.email,
       avatarUrl:attribute.avatarUrl,
-      aiToken:attribute.aiToken,
-      password: attribute.password,
       premium:attribute.premium,
       emailVerified:attribute.emailVerified,
-      verificationCode:attribute.verificationCode, 
       phoneNumber:attribute.phoneNumber
     }
   },
@@ -32,14 +29,11 @@ interface DatabaseSessionAttributes {
   authKey: string;
 }
 interface DatabaseUserAttributes {
-  password: string;
   username: string;
-  phoneNumber:string;
+  phoneNumber?:string;
   name?: string;
   email:string;
   avatarUrl:string|null;
-  aiToken:string;
-  premium:boolean;
+  premium?:boolean;
   emailVerified?: boolean;
-  verificationCode:string;
 }

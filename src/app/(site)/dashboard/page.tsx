@@ -1,12 +1,10 @@
-
 import { Metadata } from "next";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 import React from "react";
-import { redirect } from "next/navigation";
 
 // Import Dashboards
 import UserDashboard from "./user/page";
-//import BusinessDashboard from "./dashboard/business/page";
+import BusinessDashboardOverview from "./business/page";
 //import AdminDashboard from "./dashboard/admin/page"; // Import Admin Dashboard
 
 // Import Lucia Auth and Prisma
@@ -27,9 +25,6 @@ export default async function DashboardPage() {
   try {
     // Authenticate User with Lucia
     const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
-    if (!sessionId) {
-      return redirect("/auth/signin");
-    }
 
     if (sessionId) {
       // Validate session and fetch user details
@@ -58,7 +53,7 @@ export default async function DashboardPage() {
   return (
     <DefaultLayout>
       {role === "BUSINESS" ? (
-        <UserDashboard/>
+        <BusinessDashboardOverview/>
       ) : role === "ADMIN" ? (
         <UserDashboard/>
       ) : (

@@ -1,47 +1,55 @@
-"use client";
-
 import React from "react";
-import Card from "@/components/cards";
-import Chart from "@/components/Charts";
-import Table from "@/components/DataTables";
-import Modal from "@/components/Modals";
+import CardsItemOne from "@/components/Cards/CardsItemOne";
+import ChartSix from "@/components/Charts/ChartSix";
+import QuickInvoices from "@/components/DataTables/QuickInvoices";
+import QuickTransactionsTable from "@/components/DataTables/QuickTransactions";
 
-const BusinessDashboard = () => {
+const BusinessDashboardOverview: React.FC = () => {
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <h1 className="text-2xl font-bold">Business Dashboard</h1>
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Quick Stats */}
+      <CardsItemOne
+        title="Total Revenue"
+        amount="$25,430"
+        percentage="+8.4%"
+      />
+      <CardsItemOne
+        title="Active Subscriptions"
+        amount="1,250"
+        percentage="+4.2%"
+      />
+      <CardsItemOne
+        title="Pending Invoices"
+        amount="32"
+        percentage="-2.1%"
+      />
+      <CardsItemOne
+        title="New Customers"
+        amount="104"
+        percentage="+6.5%"
+      />
 
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card title="Total Revenue" value="$12,540" />
-        <Card title="Active Subscribers" value="150" />
-        <Card title="Churn Rate" value="5%" />
+      {/* Charts Section */}
+      <div className="col-span-12 xl:col-span-7">
+        <ChartSix />
       </div>
 
-      {/* Revenue Chart */}
-      <Chart title="Revenue Trends" data={[500, 800, 1200, 900]} />
+      {/* Recent Activity */}
+      <div className="col-span-12 xl:col-span-7">
+        <h4 className="mb-4 text-lg font-bold text-dark dark:text-white">
+          Recent Transactions
+        </h4>
+        <QuickTransactionsTable />
+      </div>
 
-      {/* Create Plan Modal */}
-      <Modal title="Create New Plan">
-        <form>
-          <input type="text" placeholder="Plan Name" />
-          <input type="number" placeholder="Price" />
-          <button>Create Plan</button>
-        </form>
-      </Modal>
-
-      {/* Invoice Table */}
-      <Table
-        title="Invoices"
-        data={[
-          { plan: "Pro Plan", subscribers: 10, revenue: "$500" },
-          { plan: "Basic Plan", subscribers: 20, revenue: "$400" },
-        ]}
-        columns={["Plan", "Subscribers", "Revenue"]}
-      />
+      <div className="col-span-12 xl:col-span-5">
+        <h4 className="mb-4 text-lg font-bold text-dark dark:text-white">
+          Recent Invoices
+        </h4>
+        <QuickInvoices/>
+      </div>
     </div>
   );
 };
 
-export default BusinessDashboard;
+export default BusinessDashboardOverview;

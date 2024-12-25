@@ -1,38 +1,45 @@
 import React from "react";
-import Link from "next/link";
 import { CardItemProps } from "@/types/cards";
-import Image from "next/image";
+import dynamic from "next/dynamic";
+
+// Dynamically import charts (optional)
+const MiniChart = dynamic(() => import("@/components/Charts/ChartOne"), {
+  ssr: false,
+});
 
 const CardsItemOne: React.FC<CardItemProps> = ({
-  imageSrc,
-  name,
-  role,
-  cardImageSrc,
-  cardTitle,
-  cardContent,
+  title,
+  amount,
+  percentage,
+  chartData, // Optional prop for mini charts
 }) => {
+  // Determine percentage color
+  const percentageColor =
+    percentage && percentage.includes("-") ? "text-red-500" : "text-green-500";
+
   return (
-    <div className="rounded-[10px] bg-white shadow-1 dark:bg-gray-dark dark:shadow-card">
-      <div className="flex items-center gap-3 px-6 py-5">
-        <div className="h-10 w-10 rounded-full">
-          <Image width={40} height={40} src={imageSrc || ""} alt="User" />
-        </div>
-        <div>
-          <h4 className="font-medium text-dark dark:text-white">{name}</h4>
-          <p className="text-body-sm">{role}</p>
-        </div>
+    <div className="rounded-[10px] bg-white p-6 shadow-lg dark:bg-gray-dark dark:shadow-card">
+      {/* Title */}
+      <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        {title}
+      </h4>
+
+      {/* Amount */}
+      <div className="mt-2 flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-dark dark:text-white">
+          {amount}
+        </h2>
+        <span className={`text-sm font-medium ${percentageColor}`}>
+          {percentage}
+        </span>
       </div>
 
-      <Link href="#" className="block rounded-[5px] px-4">
-        <Image width={432} height={238} src={cardImageSrc || ""} alt="Cards" />
-      </Link>
-
-      <div className="p-6">
-        <h4 className="mb-3 text-xl font-semibold text-dark hover:text-primary dark:text-white dark:hover:text-primary">
-          <Link href="#">{cardTitle}</Link>
-        </h4>
-        <p className="w-full max-w-[290px] font-medium">{cardContent}</p>
-      </div>
+      {/* Chart Placeholder */}
+      {chartData && (
+        <div className="mt-4 h-20">
+          <MiniChart data={chartData} />
+        </div>
+      )}
     </div>
   );
 };

@@ -11,330 +11,97 @@ import {
 import { FilterProps } from "react-table";
 import ColumnFilter from "./ColumnFilter";
 
-interface Employee {
-  id: string;
-  name: string;
-  position: string;
-  duration: string;
-  birthDate: string;
-  email: string;
-  phone: string;
-  address: string;
-  status: string;
-}
+// Invoice Interface
+interface Invoice {
+    id: string;
+    date: string;
+    customer: string;
+    amount: string;
+    dueDate: string;
+    status: string;
+  }
+  
+  // Updated Invoices Data
+  const recentInvoices: Invoice[] = [
+    {
+      id: "inv_001",
+      date: "2024-01-05",
+      customer: "John Doe",
+      amount: "$120.00",
+      dueDate: "2024-01-20",
+      status: "Paid",
+    },
+    {
+      id: "inv_002",
+      date: "2024-01-06",
+      customer: "Jane Smith",
+      amount: "$50.00",
+      dueDate: "2024-01-22",
+      status: "Pending",
+    },
+    {
+      id: "inv_003",
+      date: "2024-01-07",
+      customer: "Mark Johnson",
+      amount: "$1,200.00",
+      dueDate: "2024-01-25",
+      status: "Overdue",
+    },
+    {
+      id: "inv_004",
+      date: "2024-01-08",
+      customer: "Alice Brown",
+      amount: "$500.00",
+      dueDate: "2024-01-15",
+      status: "Paid",
+    },
+    {
+      id: "inv_005",
+      date: "2024-01-09",
+      customer: "Chris Evans",
+      amount: "$15.00",
+      dueDate: "2024-01-30",
+      status: "Pending",
+    },
+  ];
+  
 
-// tables data
-const dataOne: Employee[] = [
-  {
-    id: "155",
-    name: "Brielle Kuphal",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1977",
-    email: "Brielle45@gmail.com",
-    phone: "+323(29)-232-44-74",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "156",
-    name: "Barney Murray",
-    position: "Developer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1966",
-    email: "Barney@gmail.com",
-    phone: "+323(29)-232-75-44",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "157",
-    name: "Ressie Ruecker",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1955",
-    email: "Ressie@gmail.com",
-    phone: "+323(29)-785-44-44",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "158",
-    name: "Teresa Mertz",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1979",
-    email: "Teresa@gmail.com",
-    phone: "+323(29)-232-15-44",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "159",
-    name: "Chelsey Hackett",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1969",
-    email: "Chelsey@gmail.com",
-    phone: "+323(29)-232-56-89",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "160",
-    name: "Tatyana Metz",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1989",
-    email: "Tatyana@gmail.com",
-    phone: "+323(29)-789-42-23",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "161",
-    name: "Oleta Harvey",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1979",
-    email: "Oleta@gmail.com",
-    phone: "+323(29)-852-63-95",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "162",
-    name: "Bette Haag",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1979",
-    email: "Bette@gmail.com",
-    phone: "+323(29)-852-23-01",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "163",
-    name: "Meda Ebert",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1945",
-    email: "Meda@gmail.com",
-    phone: "+323(29)-232-15-23",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "164",
-    name: "Elissa Stroman",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 2000",
-    email: "Elissa@gmail.com",
-    phone: "+323(29)-756-25-63",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "165",
-    name: "Sid Swaniawski",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1999",
-    email: "Sid@gmail.com",
-    phone: "+323(29)-859-52-12",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "166",
-    name: "Madonna Hahn",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1965",
-    email: "Madonna@gmail.com",
-    phone: "+323(29)-896-52-13",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "167",
-    name: "Waylon Kihn",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1975",
-    email: "Waylon@gmail.com",
-    phone: "+323(29)-420-45-65",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "168",
-    name: "Jaunita Lindgren",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1945",
-    email: "Jaunita@gmail.com",
-    phone: "+323(29)-789-45-89",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "169",
-    name: "Lenora MacGyver",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1998",
-    email: "Lenora@gmail.com",
-    phone: "+323(29)-789-12-75",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "159",
-    name: "Chelsey Hackett",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1968",
-    email: "Chelsey@gmail.com",
-    phone: "+323(29)-963-14-52",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "160",
-    name: "Tatyana Metz",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1984",
-    email: "Tatyana@gmail.com",
-    phone: "+323(29)-856-75-12",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "161",
-    name: "Oleta Harvey",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1989",
-    email: "Oleta@gmail.com",
-    phone: "+323(29)-963-15-95",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "163",
-    name: "Meda Ebert",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1988",
-    email: "Meda@gmail.com",
-    phone: "+323(29)-258-62-32",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "164",
-    name: "Elissa Stroman",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1998",
-    email: "Elissa@gmail.com",
-    phone: "+323(29)-856-41-44",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "165",
-    name: "Sid Swaniawski",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1997",
-    email: "Sid@gmail.com",
-    phone: "+323(29)-147-75-56",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "166",
-    name: "Madonna Hahn",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1964",
-    email: "Madonna@gmail.com",
-    phone: "+323(29)-863-25-13",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "167",
-    name: "Waylon Kihn",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1945",
-    email: "Waylon@gmail.com",
-    phone: "+323(29)-896-75-25",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-  {
-    id: "168",
-    name: "Jaunita Lindgren",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1989",
-    email: "Jaunita@gmail.com",
-    phone: "+323(29)-789-12-45",
-    address: "Block A, Demo Park",
-    status: "Full-time",
-  },
-  {
-    id: "169",
-    name: "Lenora MacGyver",
-    position: "Designer",
-    duration: "3 years",
-    birthDate: "25 Nov, 1985",
-    email: "Lenora@gmail.com",
-    phone: "+323(29)-856-75-12",
-    address: "Block A, Demo Park",
-    status: "Part-time",
-  },
-];
 
-// table header
-const columns: Column<Employee>[] = [
-  {
-    Header: "Name/Id",
-    accessor: "name",
-  },
-  {
-    Header: "Position",
-    accessor: "position",
-  },
-  {
-    Header: "BDay",
-    accessor: "birthDate",
-  },
-  {
-    Header: "Email/Phone",
-    accessor: "email",
-  },
-  {
-    Header: "Address",
-    accessor: "address",
-  },
-  {
-    Header: "Status",
-    accessor: "status",
-  },
-];
+// Columns Configuration
+const columns: Column<Invoice>[] = [
+    {
+      Header: "Invoice ID",
+      accessor: "id",
+    },
+    {
+      Header: "Date",
+      accessor: "date",
+    },
+    {
+      Header: "Customer",
+      accessor: "customer",
+    },
+    {
+      Header: "Amount",
+      accessor: "amount",
+    },
+    {
+      Header: "Due Date",
+      accessor: "dueDate",
+    },
+    {
+      Header: "Status",
+      accessor: "status",
+    },
+  ];
+  
 
-const DataTableOne = () => {
-  const data = useMemo(() => dataOne, []);
+
+const QuickInvoices= () => {
+  const data = useMemo(() => recentInvoices, []);
   const defaultColumn = useMemo(() => {
     return {
-      Filter: ColumnFilter as React.FC<FilterProps<Employee>>,
+      Filter: ColumnFilter as React.FC<FilterProps<Invoice>>,
     };
   }, []);
 
@@ -566,4 +333,4 @@ const DataTableOne = () => {
   );
 };
 
-export default DataTableOne;
+export default QuickInvoices;

@@ -39,7 +39,7 @@ export default function SigninWithPassword() {
       if (res.status === 200) {
         toast.success("Login Successful");
         setLoading(false);
-        return router.push("/");
+        return router.push("/dashboard");
       } 
       
       if (res.status === 201) {

@@ -1,69 +1,129 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ClickOutside from "@/components/ClickOutside";
 
-const ModalTwo: React.FC = () => {
-  const [modalOpen, setModalOpen] = useState(false);
+type ModalTwoProps = {
+  isOpen: boolean; // Modal open state
+  onClose: () => void; // Close modal handler
+  onUpdateChart: (selectedPlans: string[]) => void; // Function to update chart
+  subscriptions: { value: string; label: string }[]; // Subscription options
+};
+
+const ModalTwo: React.FC<ModalTwoProps> = ({
+  isOpen,
+  onClose,
+  onUpdateChart,
+  subscriptions,
+}) => {
+  // State for selected plans
+  const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState(""); // Search input
+
+  // Filtered subscriptions based on search query
+  const filteredSubscriptions = subscriptions.filter((sub) =>
+    sub.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Reset selections when modal opens
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedPlans([]);
+      setSearchQuery(""); // Clear search when modal closes
+    }
+  }, [isOpen]);
+
+  // Toggle selection for a plan
+  const handleSelectPlan = (plan: string) => {
+    setSelectedPlans((prevSelected) => {
+      if (prevSelected.includes(plan)) {
+        // Remove if already selected
+        return prevSelected.filter((item) => item !== plan);
+      } else if (prevSelected.length < 3) {
+        // Add if not selected and limit is not exceeded
+        return [...prevSelected, plan];
+      }
+      return prevSelected; // No changes if limit is exceeded
+    });
+  };
+
+  // Handle apply changes
+  const handleApply = () => {
+    onUpdateChart(selectedPlans); // Update chart with selected plans
+    onClose(); // Close the modal
+  };
+
+  if (!isOpen) return null; // Don't render if modal is closed
 
   return (
-    <div>
-      <button
-        onClick={() => setModalOpen(!modalOpen)}
-        className="rounded-[7px] bg-primary px-9 py-3 font-medium text-white"
-      >
-        Modal 2
-      </button>
+    <div className="fixed left-0 top-0 z-50 flex h-full w-full items-center justify-center bg-[#111928]/90 px-4 py-5">
+      <ClickOutside onClick={onClose}>
+        <div className="w-full max-w-[550px] rounded-[15px] bg-white px-8 py-12 text-center shadow-3 dark:bg-gray-dark dark:shadow-card md:px-15 md:py-15">
+          <h3 className="text-xl font-bold text-dark dark:text-white sm:text-2xl">
+            Select Subscriptions
+          </h3>
+          <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+            Choose up to 3 subscriptions to compare.
+          </p>
 
-      {modalOpen && (
-        <div
-          className={`fixed left-0 top-0 z-999999 flex h-full min-h-screen w-full items-center justify-center bg-[#111928]/90 px-4 py-5`}
-        >
-          <ClickOutside onClick={() => setModalOpen(false)}>
-            <div className="w-full max-w-[550px] rounded-[15px] bg-white px-8 py-12 text-center shadow-3 dark:bg-gray-dark dark:shadow-card md:px-15 md:py-15">
-              <span className="mx-auto flex h-15 w-full max-w-15 items-center justify-center rounded-full bg-[#DC2626] bg-opacity-10 text-[#DC2626]">
-                <svg
-                  className="fill-current"
-                  width="28"
-                  height="28"
-                  viewBox="0 0 28 28"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M3.5 12.1529C3.5 8.42241 3.5 6.55715 3.94043 5.92964C4.38087 5.30212 6.13471 4.70178 9.6424 3.50109L10.3107 3.27233C12.1391 2.64644 13.0534 2.3335 14 2.3335C14.9466 2.3335 15.8609 2.64644 17.6893 3.27233L18.3576 3.50109C21.8653 4.70178 23.6191 5.30212 24.0596 5.92964C24.5 6.55715 24.5 8.42241 24.5 12.1529V13.9901C24.5 20.5678 19.5545 23.7599 16.4517 25.1153C15.61 25.483 15.1891 25.6668 14 25.6668C12.8109 25.6668 12.39 25.483 11.5483 25.1153C8.44546 23.7599 3.5 20.5678 3.5 13.9901V12.1529ZM14 8.4585C14.4832 8.4585 14.875 8.85025 14.875 9.3335V14.0002C14.875 14.4834 14.4832 14.8752 14 14.8752C13.5168 14.8752 13.125 14.4834 13.125 14.0002V9.3335C13.125 8.85025 13.5168 8.4585 14 8.4585ZM14 18.6668C14.6443 18.6668 15.1667 18.1445 15.1667 17.5002C15.1667 16.8558 14.6443 16.3335 14 16.3335C13.3557 16.3335 12.8333 16.8558 12.8333 17.5002C12.8333 18.1445 13.3557 18.6668 14 18.6668Z"
-                    fill=""
-                  />
-                </svg>
-              </span>
-              <h3 className="mt-5.5 pb-2 text-xl font-bold text-dark dark:text-white sm:text-2xl">
-                Deactivate Your Account
-              </h3>
-              <p className="mb-10 font-medium">
-                Lorem Ipsum is simply dummy text of the printing and typesetting
-                industry Lorem Ipsum been.
+          {/* Search Bar */}
+          <input
+            type="text"
+            placeholder="Search subscriptions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-stroke bg-transparent px-4 py-2 text-dark outline-none focus:border-primary dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+          />
+
+          {/* Scrollable Subscription List */}
+          <div className="max-h-[200px] overflow-y-auto rounded-lg border border-stroke p-2 dark:border-dark-3">
+            {filteredSubscriptions.map((subscription) => (
+              <label
+                key={subscription.value}
+                className={`flex cursor-pointer items-center justify-between rounded-lg p-3 transition ${
+                  selectedPlans.includes(subscription.value)
+                    ? "bg-primary text-white"
+                    : "hover:bg-gray-200 dark:hover:bg-dark-3"
+                }`}
+                onClick={() => handleSelectPlan(subscription.value)}
+              >
+                {subscription.label}
+                {selectedPlans.includes(subscription.value) && (
+                  <span className="ml-2 text-green-500">✓</span>
+                )}
+              </label>
+            ))}
+            {filteredSubscriptions.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No subscriptions found.
               </p>
-              <div className="-mx-2.5 flex flex-wrap gap-y-4">
-                <div className="w-full px-2.5 2xsm:w-1/2">
-                  <button
-                    onClick={() => setModalOpen(false)}
-                    className="block w-full rounded-[7px] border border-stroke bg-gray-2 p-[11px] text-center font-medium text-dark transition hover:border-gray-3 hover:bg-gray-3 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:border-dark-4 dark:hover:bg-dark-4"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                <div className="w-full px-3 2xsm:w-1/2">
-                  <button className="block w-full rounded-[7px] border border-[#DC2626] bg-[#DC2626] p-[11px] text-center font-medium text-white transition hover:bg-opacity-90">
-                    Deactivate
-                  </button>
-                </div>
-              </div>
-            </div>
-          </ClickOutside>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="mt-6 flex items-center justify-between">
+            <button
+              onClick={onClose}
+              className="w-[45%] rounded-lg border border-stroke bg-gray-200 px-5 py-3 font-medium text-dark transition hover:bg-gray-300 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-4"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApply}
+              disabled={selectedPlans.length === 0}
+              className={`w-[45%] rounded-lg px-5 py-3 font-medium text-white transition ${
+                selectedPlans.length === 0
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-primary hover:bg-primary-dark"
+              }`}
+            >
+              Apply
+            </button>
+          </div>
         </div>
-      )}
+      </ClickOutside>
     </div>
   );
 };
 
 export default ModalTwo;
+
+
