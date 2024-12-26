@@ -1,11 +1,15 @@
-"use client";
+"use server";
 
-import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import React from "react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
 import SidebarItem from "@/components/Sidebar/SidebarItem";
 import ClickOutside from "@/components/ClickOutside";
+
+// Lucia and Prisma Imports
+import { lucia } from "@/auth";
+import { prisma } from "@/libs/prismaDb";
 
 // Sidebar Props
 interface SidebarProps {
@@ -13,9 +17,8 @@ interface SidebarProps {
   setSidebarOpen: (arg: boolean) => void;
 }
 
-// -----------------------------
-// Menu Groups (with icons)
-// -----------------------------
+// ----------------------------
+// User Menu Groups
 const userMenuGroups = [
   {
     name: "User Menu",
@@ -49,6 +52,8 @@ const userMenuGroups = [
   },
 ];
 
+// ----------------------------
+// Business Menu Groups
 const businessMenuGroups = [
   {
     name: "Business Menu",
@@ -82,45 +87,35 @@ const businessMenuGroups = [
   },
 ];
 
-// -----------------------------
+// ----------------------------
+// Server-Side Function to Fetch Role
+const fetchUserRole = async (): Promise<string> => {
+  const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
+
+  if (!sessionId) return "USER"; // Default role if no session
+
+  const { user } = await lucia.validateSession(sessionId);
+
+  if (user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+    return dbUser?.role || "USER"; // Default to 'USER' if no role is found
+  }
+
+  return "USER"; // Default role
+};
+
+// ----------------------------
 // Sidebar Component
-// -----------------------------
-const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
-  const pathname = usePathname();
+const BusinessSidebar = async ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
+  // Get Role
+  const role = await fetchUserRole();
 
-  // -----------------------------
-  // States
-  // -----------------------------
-  const [role, setRole] = useState<string>("USER"); // Default to 'USER'
-  const [menuGroups, setMenuGroups] = useState(userMenuGroups);
-  const [pageName, setPageName] = useState("dashboard");
+  // Determine Menu Groups
+  const menuGroups = role === "BUSINESS" ? businessMenuGroups : userMenuGroups;
 
-  // -----------------------------
-  // Fetch Role from API
-  // -----------------------------
-  useEffect(() => {
-    const fetchRole = async () => {
-      try {
-        const response = await fetch("/api/user/hydrate");
-        if (response.ok) {
-          const data = await response.json();
-          console.log(data.user)
-          const userRole = data.user.role || "USER";
-
-          setRole(userRole); // Set role
-          setMenuGroups(userRole === "BUSINESS" ? businessMenuGroups : userMenuGroups);
-        }
-      } catch (error) {
-        console.error("Failed to fetch role:", error);
-      }
-    };
-
-    fetchRole();
-  }, []);
-
-  // -----------------------------
-  // Sidebar Render
-  // -----------------------------
   return (
     <ClickOutside onClick={() => setSidebarOpen(false)}>
       <aside
@@ -171,7 +166,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
           </button>
         </div>
 
-        {/* Sidebar Menu */}
+        {/* Sidebar Navigation */}
         <div className="no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear">
           <nav className="mt-1 px-4 lg:px-6">
             {menuGroups.map((group, groupIndex) => (
@@ -181,8 +176,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
                     <SidebarItem
                       key={menuIndex}
                       item={menuItem}
-                      pageName={pageName}
-                      setPageName={setPageName}
+                      pageName={menuItem.route}
+                      setPageName={() => {}}
                     />
                   ))}
                 </ul>
@@ -195,4 +190,4 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }: SidebarProps) => {
   );
 };
 
-export default Sidebar;
+export default BusinessSidebar;
