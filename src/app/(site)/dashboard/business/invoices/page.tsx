@@ -1,5 +1,4 @@
-import Analytics from "@/components/Dashboard/Analytics/Analytics";
-
+import BizInvoiceTable from "@/components/DataTables/BizInvoiceTable";
 import { Metadata } from "next";
 import DefaultLayout from "@/components/Layouts/DefaultLayout";
 
@@ -12,7 +11,7 @@ export const metadata: Metadata = {
 const InvoicesPage = () => {
   return (
     <DefaultLayout>
-      <Analytics />
+      <BizInvoiceTable />
     </DefaultLayout>
   );
 };
