@@ -3,7 +3,6 @@ import { Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
-import ChartTen from "../Charts/ChartTen";
 import Image from "next/image";
 
 interface Stats {
@@ -99,8 +98,6 @@ const DataStatsFive: React.FC = () => {
                     {item.name}
                   </h4>
                 </div>
-
-                <ChartTen returnRate={item.returnRate} />
               </div>
               <div className="mt-5.5 flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-1">

@@ -51,36 +51,85 @@ const userMenuGroups = [
 
 const businessMenuGroups = [
   {
-    name: "Business Menu",
+    name: "",
     menuItems: [
       {
         icon: <span className="icon-[fluent--home-12-regular] h-6 w-6"></span>,
-        label: "Dashboard",
-        route: "/business/dashboard",
+        label: "Business Menu",
+        route: "#",
+        children: [
+          {
+            label: "Dashboard",
+            route: "/dashboard",
+          },
+          {
+            label: "Plans",
+            route: "/dashboard/business/plans",
+          },
+          {
+            label: "Invoices",
+            route: "/dashboard/business/invoices",
+          },
+          {
+            label: "Analytics",
+            route: "/dashboard/business/analytics",
+          },
+          {
+            label: "Settings",
+            route: "/dashboard/business/settings",
+          },
+        ]
       },
       {
-        icon: <span className="icon-[mdi--notebook] h-6 w-6"></span>,
-        label: "Plans",
-        route: "/business/plans",
+        icon: <span className="icon-[mdi--transfer] h-6 w-6"></span>,
+        label: "Wallet Management",
+        route: "#",
+        children: [
+          {
+            label: "Wallets",
+            route: "/business/wallets",
+          },
+          {
+            label: "Transactions",
+            route: "/business/transactions",
+          }
+        ]
       },
       {
-        icon: <span className="icon-[mdi--receipt-text] h-6 w-6"></span>,
-        label: "Invoices",
-        route: "/business/invoices",
+        icon: <span className="icon-[mdi--file-document-outline] h-6 w-6"></span>,
+        label: "Reports & Compliance",
+        route: "#",
+        children: [
+          {
+            label: "Reports",
+            route: "/business/reports",
+          },
+          {
+            label: "Tax Compliance",
+            route: "/business/tax",
+          },
+        ]
       },
       {
-        icon: <span className="icon-[fa6-solid--chart-line] h-6 w-6"></span>,
-        label: "Analytics",
-        route: "/business/analytics",
-      },
-      {
-        icon: <span className="icon-[ri--settings-4-line] h-6 w-6"></span>,
-        label: "Settings",
-        route: "/business/settings",
+        icon: <span className="icon-[mdi--help-circle-outline] h-6 w-6"></span>,
+        label: "Support",
+        route: "#",
+        children: [
+          {
+            label: "Help Center",
+            route: "/business/help",
+          },
+          {
+            label: "Contact Support",
+            route: "/business/support",
+          },
+        ]
       },
     ],
   },
 ];
+
+
 
 // -----------------------------
 // Sidebar Component

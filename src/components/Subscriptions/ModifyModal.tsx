@@ -1,151 +1,142 @@
 import { useState } from "react";
-import ClickOutside from "../ClickOutside"; // Import ClickOutside module
+import ClickOutside from "../ClickOutside";
 
-const ModifyModal = ({ subscription, onClose, onSave }) => {
-  const [selectedPlan, setSelectedPlan] = useState(subscription.plan);
-  const [selectedCoin, setSelectedCoin] = useState(subscription.coinType);
-  const [billingCycle, setBillingCycle] = useState(subscription.billingCycle);
+const PlansModify = ({ plan, onClose, onSave }) => {
+  // Plan States
+  const [planName, setPlanName] = useState(plan?.name || "");
+  const [planDescription, setPlanDescription] = useState(
+    plan?.description || ""
+  );
+  const [billingCycles, setBillingCycles] = useState(
+    plan?.billingCycles || []
+  );
+  const [status, setStatus] = useState(plan?.status || "Active");
 
-  // Dropdown state management
+  const [coinType, setCoinType] = useState(plan?.coinType || "USDC");
+
+  // Dropdown states
   const [coinDropdownOpen, setCoinDropdownOpen] = useState(false);
-  const [planDropdownOpen, setPlanDropdownOpen] = useState(false);
-  const [billingDropdownOpen, setBillingDropdownOpen] = useState(false);
+  const coinTypes = ["USDC", "ETH", "BTC"];
 
-  // Example data
-  const availableCoins = [
-    { type: "ETH", balance: 1.5, usdValue: 2400 },
-    { type: "BTC", balance: 0.05, usdValue: 1500 },
-    { type: "USDC", balance: 500, usdValue: 500 },
-  ];
-
-  const availablePlans = [
-    { id: "basic", name: "Basic", price: 20 },
-    { id: "premium", name: "Premium", price: 50 },
-    { id: "pro", name: "Pro", price: 100 },
-  ];
-
-  const billingCycles = [
-    { value: "monthly", label: "Monthly" },
-    { value: "annual", label: "Annual" },
-  ];
-
+  // Save Changes
   const handleSave = () => {
-    const changes = {
-      plan: selectedPlan,
-      coinType: selectedCoin,
-      billingCycle: billingCycle,
+    const updatedPlan = {
+      ...plan,
+      name: planName,
+      description: planDescription,
+      billingCycles,
+      status,
+      coinType,
     };
-    onSave(changes);
+    onSave(updatedPlan);
+  };
+
+  // Handle Billing Cycle Updates
+  const handleBillingCycleChange = (index, key, value) => {
+    const updatedCycles = [...billingCycles];
+    updatedCycles[index][key] = value;
+    setBillingCycles(updatedCycles);
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-dark">
+      <div className="rounded-lg bg-white p-6 shadow-lg dark:bg-gray-dark w-[600px] max-h-[80vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-4 text-dark dark:text-white">
-          Modify Subscription
+          Modify Plan
         </h3>
         <form>
-          {/* Plan Dropdown */}
-          <div className="mb-4 relative">
+          {/* Plan Name */}
+          <div className="mb-4">
             <label className="block mb-2 text-dark dark:text-white">
-              Choose Plan:
+              Plan Name
             </label>
-            <ClickOutside onClick={() => setPlanDropdownOpen(false)}>
-              <div
-                className="w-full p-2 border rounded cursor-pointer focus:ring-2 focus:ring-primary dark:bg-dark-3 dark:text-white"
-                onClick={() => setPlanDropdownOpen(!planDropdownOpen)}
-              >
-                {availablePlans.find((plan) => plan.id === selectedPlan)?.name}
-              </div>
-              {planDropdownOpen && (
-                <div className="absolute mt-1 w-full bg-white dark:bg-dark-3 border border-stroke shadow-lg rounded z-50 max-h-60 overflow-y-auto">
-                  {availablePlans.map((plan) => (
-                    <div
-                      key={plan.id}
-                      onClick={() => {
-                        setSelectedPlan(plan.id);
-                        setPlanDropdownOpen(false);
-                      }}
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-4"
-                    >
-                      {plan.name} - ${plan.price}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ClickOutside>
+            <input
+              type="text"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              className="w-full p-2 border rounded dark:bg-dark-3 dark:text-white"
+            />
           </div>
 
-          {/* Coin Dropdown */}
+          {/* Description */}
+          <div className="mb-4">
+            <label className="block mb-2 text-dark dark:text-white">
+              Description
+            </label>
+            <textarea
+              value={planDescription}
+              onChange={(e) => setPlanDescription(e.target.value)}
+              className="w-full p-2 border rounded dark:bg-dark-3 dark:text-white"
+            ></textarea>
+          </div>
+
+          {/* Coin Type Dropdown */}
           <div className="mb-4 relative">
             <label className="block mb-2 text-dark dark:text-white">
-              Payment Coin:
+              Coin Type
             </label>
             <ClickOutside onClick={() => setCoinDropdownOpen(false)}>
               <div
                 className="w-full p-2 border rounded cursor-pointer focus:ring-2 focus:ring-primary dark:bg-dark-3 dark:text-white"
                 onClick={() => setCoinDropdownOpen(!coinDropdownOpen)}
               >
-                {selectedCoin}
+                {coinType}
               </div>
               {coinDropdownOpen && (
-                <div className="absolute mt-1 w-full bg-white dark:bg-dark-3 border border-stroke shadow-lg rounded z-50 max-h-60 overflow-y-auto">
-                  {availableCoins.map((coin) => (
+                <div className="absolute mt-1 w-full bg-white dark:bg-dark-3 border shadow-lg rounded">
+                  {coinTypes.map((type) => (
                     <div
-                      key={coin.type}
+                      key={type}
                       onClick={() => {
-                        setSelectedCoin(coin.type);
+                        setCoinType(type);
                         setCoinDropdownOpen(false);
-                      }}
-                      className="flex justify-between px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-4"
-                    >
-                      <span>{coin.type}</span>
-                      <span className="text-gray-500 dark:text-gray-400">
-                        {coin.balance} (${coin.usdValue.toFixed(2)})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ClickOutside>
-            <p className="mt-2 text-sm text-dark dark:text-white">
-              Coins will be automatically converted if needed.
-            </p>
-          </div>
-
-          {/* Billing Cycle Dropdown */}
-          <div className="mb-4 relative">
-            <label className="block mb-2 text-dark dark:text-white">
-              Billing Cycle:
-            </label>
-            <ClickOutside onClick={() => setBillingDropdownOpen(false)}>
-              <div
-                className="w-full p-2 border rounded cursor-pointer focus:ring-2 focus:ring-primary dark:bg-dark-3 dark:text-white"
-                onClick={() => setBillingDropdownOpen(!billingDropdownOpen)}
-              >
-                {
-                  billingCycles.find(
-                    (cycle) => cycle.value === billingCycle
-                  )?.label
-                }
-              </div>
-              {billingDropdownOpen && (
-                <div className="absolute mt-1 w-full bg-white dark:bg-dark-3 border border-stroke shadow-lg rounded z-50 max-h-60 overflow-y-auto">
-                  {billingCycles.map((cycle) => (
-                    <div
-                      key={cycle.value}
-                      onClick={() => {
-                        setBillingCycle(cycle.value);
-                        setBillingDropdownOpen(false);
                       }}
                       className="px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-dark-4"
                     >
-                      {cycle.label}
+                      {type}
                     </div>
                   ))}
                 </div>
               )}
             </ClickOutside>
+          </div>
+
+          {/* Billing Cycles */}
+          <div className="mb-4">
+            <label className="block mb-2 text-dark dark:text-white">
+              Billing Cycles
+            </label>
+            {billingCycles.map((cycle, index) => (
+              <div
+                key={cycle.id}
+                className="flex items-center gap-4 mb-2 dark:text-white"
+              >
+                <p className="w-1/3">{cycle.cycle}</p>
+                <input
+                  type="number"
+                  value={cycle.price}
+                  onChange={(e) =>
+                    handleBillingCycleChange(index, "price", e.target.value)
+                  }
+                  className="p-2 border rounded dark:bg-dark-3 dark:text-white"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Status Toggle */}
+          <div className="mb-4">
+            <label className="block mb-2 text-dark dark:text-white">
+              Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full p-2 border rounded dark:bg-dark-3 dark:text-white"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
           </div>
 
           {/* Buttons */}
@@ -153,7 +144,7 @@ const ModifyModal = ({ subscription, onClose, onSave }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded bg-gray-200 text-dark hover:bg-gray-300 dark:bg-dark-3 dark:text-white dark:hover:bg-dark-4"
+              className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 dark:bg-dark-3 dark:hover:bg-dark-4"
             >
               Cancel
             </button>
@@ -171,4 +162,4 @@ const ModifyModal = ({ subscription, onClose, onSave }) => {
   );
 };
 
-export default ModifyModal;
+export default PlansModify;
