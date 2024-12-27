@@ -1,3 +1,4 @@
+"use client"
 import { useState } from "react";
 import { FaChevronDown, FaChevronUp, FaStar, FaRegStar } from "react-icons/fa";
 import WalletDropdown from "./walletDropdown";

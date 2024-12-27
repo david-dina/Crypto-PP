@@ -31,11 +31,9 @@ const transactionData = [
       date: "2024-01-05",
       customer: "John Doe",
       plan: "Pro Plan",
-      billingCycle: "Monthly",
       amount: "$120.00",
       currency: "USD",
       status: "Completed",
-      paymentMethod: "Crypto",
       type: "Payment",
     },
     {
@@ -43,11 +41,9 @@ const transactionData = [
       date: "2024-01-06",
       customer: "Jane Smith",
       plan: "Basic Plan",
-      billingCycle: "Monthly",
       amount: "$50.00",
       currency: "USD",
       status: "Pending",
-      paymentMethod: "Credit Card",
       type: "Recurring",
     },
     {
@@ -55,11 +51,9 @@ const transactionData = [
       date: "2024-01-07",
       customer: "Mark Johnson",
       plan: "Enterprise Plan",
-      billingCycle: "Yearly",
       amount: "$1,200.00",
       currency: "USD",
       status: "Failed",
-      paymentMethod: "Wallet",
       type: "Refund",
     },
   ];
@@ -84,10 +78,6 @@ const columns: Column<Transaction>[] = [
       accessor: "plan",
     },
     {
-      Header: "Billing Cycle",
-      accessor: "billingCycle",
-    },
-    {
       Header: "Amount",
       accessor: "amount",
     },
@@ -98,10 +88,6 @@ const columns: Column<Transaction>[] = [
     {
       Header: "Status",
       accessor: "status",
-    },
-    {
-      Header: "Payment Method",
-      accessor: "paymentMethod",
     },
     {
       Header: "Type",

@@ -7,7 +7,7 @@ import React from "react";
 
 
 
-export default async function WalletsPage() {
+export default async function BusinessWalletsPage() {
 
   return (
     <DefaultLayout>

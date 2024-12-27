@@ -87,11 +87,11 @@ const businessMenuGroups = [
         children: [
           {
             label: "Wallets",
-            route: "/business/wallets",
+            route: "/dashboard/business/wallets",
           },
           {
             label: "Transactions",
-            route: "/business/transactions",
+            route: "/dashboard/business/transactions",
           }
         ]
       },
@@ -102,11 +102,11 @@ const businessMenuGroups = [
         children: [
           {
             label: "Reports",
-            route: "/business/reports",
+            route: "/dashboard/business/reports",
           },
           {
             label: "Tax Compliance",
-            route: "/business/tax",
+            route: "/dashboard/business/tax",
           },
         ]
       },
