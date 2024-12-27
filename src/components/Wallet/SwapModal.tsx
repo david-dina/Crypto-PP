@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import SelectGroupOne from "../FormElements/SelectGroup/SelectGroupOne"; // Prebuilt dropdown&#8203;:contentReference[oaicite:2]{index=2}
 import InputGroup from "../FormElements/InputGroup"; // Prebuilt input field&#8203;:contentReference[oaicite:3]{index=3}
 import { init, useConnectWallet, useNotifications } from "@web3-onboard/react"; // Web3 Onboard
-import { ethers } from "ethers";
+import { parseEther,BrowserProvider } from "ethers";
 
 const SwapModal = ({ isOpen, onClose, wallet }) => {
   const [{ wallet: connectedWallet }] = useConnectWallet();
@@ -57,12 +57,12 @@ const SwapModal = ({ isOpen, onClose, wallet }) => {
         window.open(`https://swap.provider.com?wallet=${wallet.name}`, "_blank");
       } else {
         // Example transaction using ethers.js
-        const provider = new ethers.providers.Web3Provider(connectedWallet.provider);
-        const signer = provider.getSigner();
+        const provider = new BrowserProvider(connectedWallet.provider);
+        const signer = await provider.getSigner();
 
         const tx = {
           to: "0xRecipientAddress", // Replace with actual recipient
-          value: ethers.utils.parseEther(amount), // Convert to wei
+          value: parseEther(amount), // Convert to wei
         };
 
         const transaction = await signer.sendTransaction(tx);

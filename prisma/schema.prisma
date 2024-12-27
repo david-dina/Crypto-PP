@@ -42,19 +42,6 @@ model User {
   Company                Company[]
 }
 
-model Transaction {
-  id             String        @id @unique @default(cuid())
-  userId         String
-  subscriptionId String?
-  amount         Float
-  currency       String
-  status         String
-  type           String
-  createdAt      DateTime      @default(now())
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  user           User          @relation(fields: [userId], references: [id])
-}
-
 model Wallet {
   id        String   @id @unique @default(cuid())
   address   String   @unique // Wallet address
@@ -85,11 +72,37 @@ model Company {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   ownerId         String
-  owner           User           @relation(fields: [ownerId], references: [id],onDelete: Cascade)
+  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   plans           Plan[]
   subscriptions   Subscription[]
   Wallet          Wallet[]
+
+  // New Fields for Compliance
+  restrictedRegions String[]     @default([]) // List of restricted regions (jurisdictions)
+  taxRate           Float?       // Default tax rate for business jurisdiction
+  taxID             String?      // Business Tax ID for compliance
+  taxComplianceNote String?      // Optional notes for compliance details
 }
+
+model Transaction {
+  id             String        @id @unique @default(cuid())
+  userId         String
+  subscriptionId String?
+  amount         Float
+  currency       String
+  status         String
+  type           String
+  createdAt      DateTime      @default(now())
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+
+  // New Tax Fields
+  taxRate        Float?        // Applied tax rate
+  taxAmount      Float?        // Tax amount calculated
+  jurisdiction   String?       // Jurisdiction for tax tracking
+  netAmount      Float?        // Net amount after tax deductions
+}
+
 
 model Plan {
   id            String         @id @unique @default(cuid())
