@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FaChevronDown, FaChevronUp, FaStar, FaRegStar } from "react-icons/fa";
 import WalletDropdown from "./walletDropdown";
+import SwapModal from "./SwapModal";
+import TransferModal from "./TransferModal";
 
 // Example Wallet Data
 const walletData = [
@@ -29,6 +31,18 @@ const walletData = [
 const WalletTable = () => {
   const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
   const [primaryWallet, setPrimaryWallet] = useState<string | null>("Google Wallet");
+  const [isSwapModalOpen, setSwapModalOpen] = useState({
+    isOpen: false,
+    wallet: null,
+  });
+  
+  const [isTransferModalOpen, setTransferModalOpen] = useState({
+    isOpen: false,
+    wallet: null,
+  });
+  
+  
+
 
   // Store last refreshed time for each wallet
   const [refreshTimes, setRefreshTimes] = useState<{ [key: string]: string }>(() => {
@@ -65,6 +79,7 @@ const WalletTable = () => {
         </h4>
         <WalletDropdown />
       </div>
+
 
       {/* Wallet Table */}
       <div className="flex flex-col">
@@ -130,7 +145,32 @@ const WalletTable = () => {
                   {refreshTimes[wallet.name]}
                 </p>
               </div>
+              <div className="flex justify-end gap-4">
+  {/* Swap Button */}
+  <button
+    onClick={() =>
+      setSwapModalOpen({ isOpen: true, wallet: wallet }) // Pass wallet context
+    }
+    className="rounded-lg bg-primary px-6 py-2 font-medium text-white hover:bg-primary-dark"
+  >
+    Swap
+  </button>
+
+  {/* Transfer Button */}
+  <button
+    onClick={() =>
+      setTransferModalOpen({ isOpen: true, wallet: wallet }) // Pass wallet context
+    }
+    className="rounded-lg bg-secondary px-6 py-2 font-medium text-white hover:bg-secondary-dark"
+  >
+    Transfer
+  </button>
+</div>
+
+
+
             </div>
+            
 
             {/* Dropdown Details */}
             {expandedWallet === wallet.name && (
@@ -156,6 +196,16 @@ const WalletTable = () => {
           </div>
         ))}
       </div>
+      <SwapModal
+  isOpen={isSwapModalOpen.isOpen}
+  onClose={() => setSwapModalOpen({ isOpen: false, wallet: null })}
+  wallet={isSwapModalOpen.wallet} // Pass wallet data to modal
+/>
+
+
+
+
+
     </div>
   );
 };
