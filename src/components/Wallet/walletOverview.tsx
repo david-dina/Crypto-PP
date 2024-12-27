@@ -145,33 +145,34 @@ const WalletTable = () => {
                   {refreshTimes[wallet.name]}
                 </p>
               </div>
-              <div className="flex justify-end gap-4">
-  {/* Swap Button */}
-  <button
-    onClick={() =>
-      setSwapModalOpen({ isOpen: true, wallet: wallet }) // Pass wallet context
-    }
-    className="rounded-lg bg-primary px-6 py-2 font-medium text-white hover:bg-primary-dark"
-  >
-    Swap
-  </button>
+              <div className="col-span-2 flex justify-end items-center gap-4 px-4">
+                {/* Swap Button */}
+                <button
+                  onClick={() =>
+                    setSwapModalOpen({ isOpen: true, wallet: wallet })
+                  }
+                  className="rounded-lg px-6 py-2 font-medium transition-colors hover:shadow-md 
+                    bg-primary text-white hover:bg-primary-dark 
+                    dark:bg-primary-light dark:text-white hover:dark:bg-primary-dark"
+                >
+                  Swap
+                </button>
 
-  {/* Transfer Button */}
-  <button
-    onClick={() =>
-      setTransferModalOpen({ isOpen: true, wallet: wallet }) // Pass wallet context
-    }
-    className="rounded-lg bg-secondary px-6 py-2 font-medium text-white hover:bg-secondary-dark"
-  >
-    Transfer
-  </button>
-</div>
-
+                {/* Transfer Button */}
+                <button
+                  onClick={() =>
+                    setTransferModalOpen({ isOpen: true, wallet: wallet })
+                  }
+                  className="rounded-lg px-6 py-2 font-medium transition-colors hover:shadow-md 
+                    bg-secondary text-dark hover:bg-secondary-dark 
+                    dark:bg-secondary-light dark:text-white hover:dark:bg-secondary-dark"
+                >
+                  Transfer
+                </button>
+              </div>
 
 
             </div>
-            
-
             {/* Dropdown Details */}
             {expandedWallet === wallet.name && (
               <div className="bg-[#F7F9FC] dark:bg-dark-3 px-4 py-3 rounded-b-md">
@@ -201,11 +202,10 @@ const WalletTable = () => {
   onClose={() => setSwapModalOpen({ isOpen: false, wallet: null })}
   wallet={isSwapModalOpen.wallet} // Pass wallet data to modal
 />
-
-
-
-
-
+<TransferModal
+isOpen={isTransferModalOpen.isOpen}
+onClose={()=> setTransferModalOpen({isOpen:false,wallet:null})}
+wallet={isTransferModalOpen.wallet}/>
     </div>
   );
 };
