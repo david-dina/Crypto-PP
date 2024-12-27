@@ -3,26 +3,27 @@ import { dataStats } from "@/types/dataStats";
 
 const dataStatsList = [
   {
-    title: "Total Streams",
-    value: "55.6K",
-    growthRate: 18,
-  },
-  {
-    title: "Unique Streams",
-    value: "16.9K",
-    growthRate: 25,
-  },
-  {
-    title: "New Likes",
-    value: "923",
-    growthRate: -7,
-  },
-  {
-    title: "Playlist Adds",
-    value: "175",
+    title: "Total Revenue",
+    value: "$25.6K",
     growthRate: 12,
   },
+  {
+    title: "Total Transactions",
+    value: "10.2K",
+    growthRate: 15,
+  },
+  {
+    title: "Active Users",
+    value: "3.8K",
+    growthRate: 7,
+  },
+  {
+    title: "New Subscriptions",
+    value: "520",
+    growthRate: 10,
+  },
 ];
+
 
 const Stats: React.FC<dataStats> = () => {
   return (

@@ -1,22 +1,12 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import ChartFour from "../../Charts/ChartFour";
-import DataStatsTwo from "../../DataStats/DataStatsTwo";
-import ChartThree from "../../Charts/ChartThree";
-import TopContent from "../../TopContent";
-import TopChannels from "../../TopChannels";
-import TableTwo from "../../Tables/TableTwo";
 import MapTwo from "@/components/Maps/MapTwo";
 import DatepickerBox from "@/components/DatepickerBox";
-import DefaultSelectOptionTwo from "@/components/SelectOption/DefaultSelectOptionTwo";
-import ECommerce from "@/components/Dashboard/E-commerce";
-import ChartSix from "../../Charts/ChartSix";
 import StreamGraph from "./StreamGraph";
 import Stats from "./Stats";
-import TopSongs from "./TopSongs";
-import GenderChart from "./GenderChart";
-import TopAges from "./TopAges";
-import AgesChart from "./TopAges";
+import TopPlans from "./TopPlans";
+import PaymentMethodsChart from "./PaymentMethodsChart";
+import PaymentFrequencyChart from "./PaymentFrequencyChart";
 
 const Analytics: React.FC = () => {
   return (
@@ -27,18 +17,16 @@ const Analytics: React.FC = () => {
         </div>
         <Stats />
         <StreamGraph />
-
-        <MapTwo />
         <div className="col-span-12 xl:col-span-6">
           {/* <!-- ====== Top Content Star --> */}
-          <TopSongs />
+          <TopPlans />
           {/* <!-- ====== Top Content End --> */}
 
           {/* <!-- ====== Top Channels Star --> */}
-          <AgesChart />
+          <PaymentFrequencyChart />
           {/* <!-- ====== Top Channels End --> */}
         </div>
-        <GenderChart />
+        <PaymentMethodsChart />
       </div>
     </>
   );

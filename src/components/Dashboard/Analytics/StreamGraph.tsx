@@ -1,20 +1,31 @@
 import { ApexOptions } from "apexcharts";
 import React, { useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import DropdownDefault from "../../Dropdowns/DropdownDefault";
+import GraphDatasetModal from "@/components/Modals/ModalAnalytics";
+import DropdownEdit from "@/components/Dropdowns/DropdownEdit";
 
-const StreamGraph: React.FC = () => {
-  const series = [
+const RevenueTransactionGraph: React.FC = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [series, setSeries] = useState([
     {
-      name: "Total",
-      data: [15, 12, 61, 118, 78, 125, 165, 61, 183, 238, 237, 235],
+      name: "Total Revenue",
+      data: [2000, 2500, 3200, 4000, 4500, 5000, 6000, 5500, 7000, 7500, 8000, 8500],
     },
+    {
+      name: "Total Transactions",
+      data: [150, 200, 250, 300, 350, 400, 450, 420, 500, 550, 600, 650],
+    },
+  ]);
 
-    {
-      name: "Unique",
-      data: [75, 77, 151, 72, 7, 58, 60, 185, 239, 135, 119, 124],
-    },
-  ];
+  const handleApply = (selectedDatasets) => {
+    const updatedSeries = selectedDatasets.map((dataset) => ({
+      name: dataset.label, // Dataset name
+      data: dataset.data,  // Dataset values
+    }));
+  
+    setSeries(updatedSeries); // Update the chart data
+  };
+
 
   const options: ApexOptions = {
     legend: {
@@ -59,7 +70,6 @@ const StreamGraph: React.FC = () => {
       width: [2, 2],
       curve: "smooth",
     },
-
     markers: {
       size: 0,
     },
@@ -116,10 +126,10 @@ const StreamGraph: React.FC = () => {
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h4 className="text-heading-5 font-bold text-dark dark:text-white">
-            Song Streams
+            Revenue and Transactions
           </h4>
         </div>
-        <DropdownDefault />
+        <DropdownEdit onClick={() => setIsModalOpen(true)} />
       </div>
       <div>
         <div id="chartSix" className="-ml-3.5 -mr-4">
@@ -131,8 +141,13 @@ const StreamGraph: React.FC = () => {
           />
         </div>
       </div>
+      <GraphDatasetModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onApply={handleApply}
+      />
     </div>
   );
 };
 
-export default StreamGraph;
+export default RevenueTransactionGraph;
