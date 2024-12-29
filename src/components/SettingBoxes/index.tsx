@@ -15,13 +15,12 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// User Interface
 interface User {
   id: string;
   name: string;
   username: string;
   email: string;
-  password?: string;
-  bio: string;
   phoneNumber: string;
   avatarUrl: string;
   role: "USER" | "BUSINESS";
@@ -47,7 +46,12 @@ const SettingsPage = () => {
       if (response.ok) {
         const result = await response.json();
         setUserData(result.user);
+        setFormData(result.user);
         setIsLoading(false);
+
+        if (result.user.avatarUrl) {
+          setAvatarPreview(result.user.avatarUrl);
+        }
 
         if (result.user.role === "BUSINESS") {
           setActiveTab("business");
@@ -59,6 +63,7 @@ const SettingsPage = () => {
     fetchData();
   }, []);
 
+  // Handle Input Changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData({
@@ -67,6 +72,7 @@ const SettingsPage = () => {
     });
   };
 
+  // Handle Avatar Preview
   const handleAvatarPreview = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -75,6 +81,7 @@ const SettingsPage = () => {
     }
   };
 
+  // Upload Avatar to Supabase
   const handleAvatarUpload = async () => {
     if (!avatarFile) {
       toast.error("No file selected.");
@@ -96,6 +103,7 @@ const SettingsPage = () => {
     }
   };
 
+  // Save Changes
   const handleSave = async () => {
     const response = await fetch("/api/user/settings", {
       method: "POST",
@@ -123,63 +131,84 @@ const SettingsPage = () => {
         >
           Profile Settings
         </button>
-        <button
-          className={`py-2 ${
-            activeTab === "business" ? "border-b-2 border-primary" : ""
-          }`}
-          onClick={() => setActiveTab("business")}
-        >
-          Business Settings
-        </button>
+        {userData?.role === "BUSINESS" && (
+          <button
+            className={`py-2 ${
+              activeTab === "business" ? "border-b-2 border-primary" : ""
+            }`}
+            onClick={() => setActiveTab("business")}
+          >
+            Business Settings
+          </button>
+        )}
       </div>
 
       {/* Profile Tab */}
       {activeTab === "profile" && (
         <form className="space-y-6">
           <div>
-            <label className="block mb-2">Full Name</label>
+            <label className="block mb-2 text-base font-medium text-dark dark:text-white">
+              Full Name
+            </label>
             <input
               type="text"
               name="name"
               defaultValue={userData?.name}
               onChange={handleInputChange}
-              className="w-full rounded-lg border px-4 py-2 bg-gray-100 text-black dark:bg-dark-2 dark:text-white"
+              className="w-full rounded-lg border px-4 py-3 bg-gray-100 text-dark dark:bg-dark-2 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block mb-2">Username</label>
+            <label className="block mb-2 text-base font-medium text-dark dark:text-white">
+              Username
+            </label>
             <input
               type="text"
               name="username"
               defaultValue={userData?.username}
               onChange={handleInputChange}
-              className="w-full rounded-lg border px-4 py-2 bg-gray-100 text-black dark:bg-dark-2 dark:text-white"
+              className="w-full rounded-lg border px-4 py-3 bg-gray-100 text-dark dark:bg-dark-2 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block mb-2">Email</label>
+            <label className="block mb-2 text-base font-medium text-dark dark:text-white">
+              Email
+            </label>
             <input
               type="email"
               name="email"
               defaultValue={userData?.email}
               onChange={handleInputChange}
-              className="w-full rounded-lg border px-4 py-2 bg-gray-100 text-black dark:bg-dark-2 dark:text-white"
+              className="w-full rounded-lg border px-4 py-3 bg-gray-100 text-dark dark:bg-dark-2 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block mb-2">Phone Number</label>
+            <label className="block mb-2 text-base font-medium text-dark dark:text-white">
+              Phone Number
+            </label>
             <input
               type="text"
               name="phoneNumber"
               defaultValue={userData?.phoneNumber}
               onChange={handleInputChange}
-              className="w-full rounded-lg border px-4 py-2 bg-gray-100 text-black dark:bg-dark-2 dark:text-white"
+              className="w-full rounded-lg border px-4 py-3 bg-gray-100 text-dark dark:bg-dark-2 dark:text-white"
             />
           </div>
 
+          <div>
+            <label className="block mb-2 text-base font-medium text-dark dark:text-white">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              onChange={handleInputChange}
+              className="w-full rounded-lg border px-4 py-3 bg-gray-100 text-dark dark:bg-dark-2 dark:text-white"
+            />
+          </div>
 
           <CheckboxOne
             label="Enable 2FA"
@@ -201,25 +230,57 @@ const SettingsPage = () => {
             onChange={handleInputChange}
             name="sendInAppNotifications"
           />
-          <button
-            type="button"
-            onClick={() => setPasswordModalOpen(true)}
-            className="w-full bg-primary text-white px-2 py-2 rounded-lg"
-          >
-            Change Password
-          </button>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            className="w-full bg-primary text-white px-4 py-2 rounded-lg mb-4"
-          >
-            Save Changes
-          </button>
+          {/* Avatar Upload */}
+          <div className="mb-6">
+            <label className="block mb-4 text-base font-medium text-dark dark:text-white">
+              Profile Image
+            </label>
+            {avatarPreview && (
+              <img
+                src={avatarPreview}
+                alt="Profile Preview"
+                className="mb-4 w-20 h-20 rounded-full object-cover"
+              />
+            )}
+            <label className="block cursor-pointer rounded-lg border px-4 py-3 text-center text-sm font-medium text-dark dark:border-dark-3 dark:bg-dark-2 dark:text-white">
+              Choose File
+              <input
+                type="file"
+                onChange={handleAvatarPreview}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col gap-4 md:flex-row">
+            <button
+              type="button"
+              onClick={handleAvatarUpload}
+              className="w-full rounded-lg bg-primary px-4 py-3 text-base font-medium text-white hover:bg-primary-dark"
+            >
+              Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasswordModalOpen(true)}
+              className="w-full rounded-lg bg-primary px-4 py-3 text-base font-medium text-white hover:bg-primary-dark"
+            >
+              Change Password
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="w-full rounded-lg bg-primary px-4 py-3 text-base font-medium text-white hover:bg-primary-dark"
+            >
+              Save Changes
+            </button>
+          </div>
         </form>
       )}
 
-      {activeTab === "business" && <div className="p-4"><BusinessSettings userData={userData}/></div>}
+      {activeTab === "business" && <BusinessSettings userData={userData} />}
 
       {isTwoFAModalOpen && (
         <TwoFAModal
@@ -228,12 +289,11 @@ const SettingsPage = () => {
         />
       )}
       {isPasswordModalOpen && (
-  <PasswordModal
-    isOpen={isPasswordModalOpen}
-    onClose={() => setPasswordModalOpen(false)}
-  />
-)}
-
+        <PasswordModal
+          isOpen={isPasswordModalOpen}
+          onClose={() => setPasswordModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
