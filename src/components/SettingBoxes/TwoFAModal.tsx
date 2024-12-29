@@ -97,15 +97,17 @@ const TwoFAModal: React.FC<TwoFAModalProps> = ({ isOpen, onClose }) => {
     <>
       {isOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="rounded-lg bg-white p-6 shadow-lg w-full max-w-md">
-            <h2 className="text-lg font-medium mb-4">Two-Factor Authentication</h2>
+          <div className="rounded-lg bg-white dark:bg-gray-dark p-6 shadow-lg w-full max-w-md">
+            <h2 className="text-lg font-medium mb-4 text-dark dark:text-white">
+              Two-Factor Authentication
+            </h2>
             {isLoading ? (
-              <p className="text-center">Loading...</p>
+              <p className="text-center text-dark dark:text-white">Loading...</p>
             ) : (
               <>
                 {!isEnabled ? (
                   <>
-                    <p className="mb-4 text-sm text-gray-600">
+                    <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
                       Scan the QR code below using your authenticator app (e.g., Google Authenticator).
                     </p>
                     {qrCodeUrl && (
@@ -114,14 +116,14 @@ const TwoFAModal: React.FC<TwoFAModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     )}
 
-                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                    <label className="block mb-2 text-sm font-medium text-gray-700 dark:text-white">
                       Enter Verification Code:
                     </label>
                     <input
                       type="text"
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
-                      className="w-full mb-4 rounded-lg border px-4 py-2"
+                      className="w-full mb-4 rounded-lg border px-4 py-2 bg-white text-dark dark:bg-dark-2 dark:text-white"
                       placeholder="Enter code"
                     />
 
@@ -134,7 +136,7 @@ const TwoFAModal: React.FC<TwoFAModalProps> = ({ isOpen, onClose }) => {
                   </>
                 ) : (
                   <>
-                    <p className="mb-4 text-sm text-gray-600">
+                    <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
                       Two-Factor Authentication is currently enabled.
                     </p>
                     <button
@@ -150,7 +152,7 @@ const TwoFAModal: React.FC<TwoFAModalProps> = ({ isOpen, onClose }) => {
 
             <button
               onClick={onClose}
-              className="mt-4 w-full rounded-lg border px-4 py-2 hover:bg-gray-100"
+              className="mt-4 w-full rounded-lg border px-4 py-2 text-dark hover:bg-gray-100 dark:border-dark-3 dark:text-white dark:hover:bg-dark-2"
             >
               Cancel
             </button>

@@ -64,11 +64,13 @@ model ActivityLog {
 
 model Company {
   id              String         @id @unique @default(cuid())
-  name            String
-  currency        String         @default("USD")
-  category        String
-  acceptedCoins   String[]
+  name            String         // Editable Business Name
+  currency        String         @default("USD") // Default Fiat Currency
+  acceptedCoins   String[]       // Accepted Cryptocurrencies (e.g., BTC, ETH)
+  restrictedRegions String[]     @default([]) // Restricted Sales Regions
+  withdrawalWallet String?       // Default Wallet Address for Withdrawals
   primaryWalletId String?        @unique
+  enableTax       Boolean        @default(true) // Tax toggle switch
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   ownerId         String
@@ -76,13 +78,8 @@ model Company {
   plans           Plan[]
   subscriptions   Subscription[]
   Wallet          Wallet[]
-
-  // New Fields for Compliance
-  restrictedRegions String[]     @default([]) // List of restricted regions (jurisdictions)
-  taxRate           Float?       // Default tax rate for business jurisdiction
-  taxID             String?      // Business Tax ID for compliance
-  taxComplianceNote String?      // Optional notes for compliance details
 }
+
 
 model Transaction {
   id             String        @id @unique @default(cuid())

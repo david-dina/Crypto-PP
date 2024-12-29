@@ -1,6 +1,6 @@
 import React from "react";
 
-const CheckboxOne = ({ checked, onChange, label }) => {
+const CheckboxOne = ({ checked, onChange, label, name }) => {
   return (
     <div>
       <label
@@ -12,6 +12,7 @@ const CheckboxOne = ({ checked, onChange, label }) => {
           <input
             type="checkbox"
             id={label}
+            name={name} // Add name prop
             className="sr-only"
             checked={checked} // Dynamically set checked state
             onChange={onChange} // Trigger change handler
