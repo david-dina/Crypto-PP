@@ -21,9 +21,10 @@
     "@sanity/block-content-to-react": "^3.0.0",
     "@supabase/supabase-js": "^2.47.10",
     "@types/swiper": "^6.0.0",
-    "@web3-onboard/core": "^2.23.0",
-    "@web3-onboard/injected-wallets": "^2.11.2",
+    "@web3-onboard/core": "^2.23.1",
+    "@web3-onboard/injected-wallets": "^2.11.3",
     "@web3-onboard/react": "^2.10.0",
+    "@web3-onboard/wagmi": "^2.0.1",
     "algoliasearch": "^4.23.2",
     "apexcharts": "^3.45.2",
     "axios": "^1.6.8",
@@ -58,7 +59,8 @@
     "sanity": "^3.23.4",
     "stripe": "^14.13.0",
     "supabase": "^2.1.1",
-    "swiper": "^11.1.14"
+    "swiper": "^11.1.14",
+    "viem": "^2.21.58"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
