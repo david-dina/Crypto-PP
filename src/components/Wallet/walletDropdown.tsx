@@ -1,23 +1,23 @@
 import { useState } from "react";
 import ClickOutside from "@/components/ClickOutside";
 
-// Mock wallet data for demonstration
-const mockWalletData = [
-  { name: "Google Wallet", balance: "$1,245", coins: "BTC: 0.0345, ETH: 1.2" },
-  { name: "X.com Wallet", balance: "$1,021", coins: "BTC: 0.05, USDC: 90.0" },
-];
-
-const WalletDropdown = () => {
+const WalletDropdown = ({ wallets, refreshWallets, connectWallet }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Export wallet data as CSV
   const handleExport = () => {
-    const csvHeader = "Name,Balance,Coins\n";
-    const csvRows = mockWalletData.map(
-      (wallet) => `${wallet.name},${wallet.balance},${wallet.coins}`
-    );
+    // Define CSV headers
+    const csvHeader = "Source,Address,Blockchain,Balance,Last Refreshed,Network\n";
+    
+    // Map wallet data to CSV rows
+    const csvRows = wallets.map((wallet) => {
+      return `${wallet.provider},${wallet.address},${wallet.blockchain},${wallet.balance},${new Date(wallet.updatedAt).toLocaleString()},${wallet.blockchain}`;
+    });
+
+    // Combine headers and rows
     const csvContent = csvHeader + csvRows.join("\n");
 
+    // Create and download the CSV file
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -27,10 +27,15 @@ const WalletDropdown = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  // Refresh wallet data (placeholder)
+  // Refresh wallet data
   const handleRefresh = () => {
-    console.log("Refreshing wallet data...");
-    // Replace with an actual API call or logic to fetch updated data.
+    refreshWallets(); // Refresh all wallets
+  };
+
+  // Add a wallet and reset the page
+  const handleAddWallet = async () => {
+    await connectWallet(); // Trigger wallet connection logic
+    window.location.reload(); // Reset the page
   };
 
   return (
@@ -59,42 +64,11 @@ const WalletDropdown = () => {
           <div
             className={`absolute right-0 top-full z-40 w-46.5 space-y-1.5 rounded-[7px] border border-stroke bg-white p-2 shadow-2 dark:border-dark-3 dark:bg-dark-2 dark:shadow-card`}
           >
-            {/* Edit Button */}
-            <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white">
-              <svg
-                className="fill-current"
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M2 10L8 4L14 10L8 16L2 10Z" />
-              </svg>
-              Edit
-            </button>
-
             {/* Refresh Button */}
             <button
               onClick={handleRefresh}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
             >
-             <svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="18"
-  height="18"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  strokeWidth="2"
-  strokeLinecap="round"
-  strokeLinejoin="round"
->
-  <polyline points="23 4 23 10 17 10"></polyline>
-  <polyline points="1 20 1 14 7 14"></polyline>
-  <path d="M3.51 9a9 9 0 0 1 14.1-3.36L23 10"></path>
-  <path d="M20.49 15a9 9 0 0 1-14.1 3.36L1 14"></path>
-</svg>
-
               Refresh
             </button>
 
@@ -103,42 +77,16 @@ const WalletDropdown = () => {
               onClick={handleExport}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
             >
-              <svg
-                className="fill-current"
-                width="18"
-                height="18"
-                viewBox="0 0 18 18"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M3 11V15H15V11H17V16C17 16.5523 16.5523 17 16 17H2C1.44772 17 1 16.5523 1 16V11H3Z" />
-                <path d="M9 1L14 6H11V11H7V6H4L9 1Z" />
-              </svg>
               Export
             </button>
 
             {/* Add Wallet Button */}
-<button
-  onClick={() => console.log("Add a Wallet")}
-  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
->
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="10"></circle>
-    <line x1="12" y1="8" x2="12" y2="16"></line>
-    <line x1="8" y1="12" x2="16" y2="12"></line>
-  </svg>
-  Add a Wallet
-</button>
-
+            <button
+              onClick={handleAddWallet}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
+            >
+              Add a Wallet
+            </button>
           </div>
         )}
       </div>

@@ -10,8 +10,6 @@ export async function GET(req: Request) {
   const email = params.get("email");
   const password = params.get("password");
 
-  console.log(email, password, "- SIGN IN");
-
   if (!email || !password) {
     return new Response("Missing credentials", { status: 400 });
   }

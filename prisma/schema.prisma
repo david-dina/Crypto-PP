@@ -43,15 +43,39 @@ model User {
 }
 
 model Wallet {
-  id        String   @id @unique @default(cuid())
-  address   String   @unique // Wallet address
-  balance   Float    @default(0.0)
-  userId    String? // Links to a user
-  companyId String? // Links to a company
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  User      User?    @relation(fields: [userId], references: [id]) // User's wallet
-  Company   Company? @relation(fields: [companyId], references: [id]) // Company's wallet
+  id          String   @id @unique @default(cuid())
+  address     String
+  blockchain  String
+  balance     Float    @default(0.0)
+  provider    Provider
+  userId      String?
+  companyId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tokenBalances TokenBalance[]
+  User        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, address]) // Ensure provider and address are unique together
+}
+
+model TokenBalance {
+  id         String   @id @default(cuid())
+  walletId  String
+  tokenName String
+  contract  String
+  symbol    String
+  decimals  Int
+  balance   Float
+  wallet    Wallet @relation(fields: [walletId], references: [id],onDelete: Cascade)
+}
+
+enum Provider {
+  Phantom
+  MetaMask
+  CoinbaseWallet
+  TrustWallet
+  BinanceWallet
 }
 
 model ActivityLog {
@@ -65,6 +89,7 @@ model ActivityLog {
 model Company {
   id              String         @id @unique @default(cuid())
   name            String         // Editable Business Name
+  category        String
   currency        String         @default("USD") // Default Fiat Currency
   acceptedCoins   String[]       // Accepted Cryptocurrencies (e.g., BTC, ETH)
   restrictedRegions String[]     @default([]) // Restricted Sales Regions

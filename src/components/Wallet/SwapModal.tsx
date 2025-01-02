@@ -2,12 +2,9 @@
 import { useState, useEffect } from "react";
 import SelectGroupOne from "../FormElements/SelectGroup/SelectGroupOne";
 import InputGroup from "../FormElements/InputGroup";
-import { init, useConnectWallet, useNotifications } from "@web3-onboard/react";
 import { parseEther, BrowserProvider } from "ethers";
 
 const SwapModal = ({ isOpen, onClose, wallet }) => {
-  const [{ wallet: connectedWallet }] = useConnectWallet();
-  const [{ notifications }] = useNotifications();
 
   const [fromToken, setFromToken] = useState("");
   const [toToken, setToToken] = useState("USDC");
