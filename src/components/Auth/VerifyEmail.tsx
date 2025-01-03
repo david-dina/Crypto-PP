@@ -18,13 +18,18 @@ export default function VerifyEmail({length}:{length:number}) {
 
 
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const enteredCode = inputValues.join("");
     if (enteredCode === data?.verificationCode) {
-      toast.success("Verified Successfully");
-      fetch('/api/verify/user',{method:"POST"}).catch((e)=>{console.log(e)})
+      const response = await fetch("/api/verify/user", { method: "POST" });
+      if (response.ok) {
+          await router.push("/dashboard");
+          toast.success("Verified Successfully");
+      } else {
+        throw new Error("Verification failed.");
+      }
         
-      return router.push("/")
+      router.push("/dashboard")
     } else {
         toast.error("The Code is Invalid")
         console.log("The Code is Invalid: " + data?.verificationCode);
@@ -77,31 +82,47 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => 
 
 
 useEffect(() => {
+  let isMounted = true; // Flag to track if the component is still mounted
+
   const fetchUser = async () => {
     try {
       const response = await fetch("/api/verify/fetch");
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(response);
-        console.log(errorData.message);
-        return router.push('/auth/signin')
+        console.error("API Error:", errorData.message);
+        if (isMounted) {
+          toast.error(errorData.message || "Failed to fetch user data. Please try again.");
+          router.push('/auth/signin');
+        }
+        return;
       }
+
       const userData: UserVerifyData = await response.json();
-      if (userData.emailVerified) {
-        router.push("/");
-      } else {
-        setData(userData);
+      if (isMounted) {
+        console.log(userData)
+        if (userData.emailVerified) {
+          router.push("/dashboard");
+        } else {
+          setData(userData);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
     } catch (error) {
-      toast.error("Please check your network connection then try again.");
-      console.error('error: ', error);
-      setIsLoading(false);
+      if (isMounted) {
+        toast.error("Please check your network connection and try again.");
+        console.error('Fetch Error:', error);
+        setIsLoading(false);
+      }
     }
   };
 
   fetchUser();
-}, []);
+
+  // Cleanup function to avoid state updates after unmount
+  return () => {
+    isMounted = false;
+  };
+}, [router]); // Add `router` to the dependency array
 
 
 //if (isLoading) {

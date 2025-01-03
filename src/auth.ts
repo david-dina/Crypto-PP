@@ -14,7 +14,8 @@ export const lucia = new Lucia(adapter, {
       avatarUrl:attribute.avatarUrl,
       premium:attribute.premium,
       emailVerified:attribute.emailVerified,
-      phoneNumber:attribute.phoneNumber
+      phoneNumber:attribute.phoneNumber,
+      verificationCode:attribute.verificationCode
     }
   },
 });
@@ -38,4 +39,5 @@ interface DatabaseUserAttributes {
   avatarUrl:string|null;
   premium?:boolean;
   emailVerified?: boolean;
+  verificationCode?:string;
 }
