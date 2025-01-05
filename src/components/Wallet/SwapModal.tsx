@@ -5,19 +5,16 @@ import InputGroup from "../FormElements/InputGroup";
 import { parseEther, BrowserProvider } from "ethers";
 
 const SwapModal = ({ isOpen, onClose, wallet }) => {
-
   const [fromToken, setFromToken] = useState("");
   const [toToken, setToToken] = useState("USDC");
   const [amount, setAmount] = useState("");
   const [conversionRate, setConversionRate] = useState(0);
-  const [isExternal, setIsExternal] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (wallet) {
-      setFromToken(wallet.accounts[0].balance); // Set default balance
-      setIsExternal(wallet.label.includes("MetaMask")); // Check if external
+    if (wallet && wallet.tokenBalances && wallet.tokenBalances.length > 0) {
+      setFromToken(wallet.tokenBalances[0].symbol); // Set default token
     }
   }, [wallet]);
 
@@ -31,26 +28,28 @@ const SwapModal = ({ isOpen, onClose, wallet }) => {
   }, [fromToken, toToken, amount]);
 
   const handleSwap = async () => {
-    if (!connectedWallet) {
+    if (!wallet) {
       setError("No wallet connected!");
       return;
     }
-    if (!amount || amount <= 0) {
+    if (!amount || parseFloat(amount) <= 0) {
       setError("Enter a valid amount!");
       return;
     }
 
     setIsSwapping(true);
+    setError("");
 
     try {
-      const provider = new BrowserProvider(connectedWallet.provider);
+      const provider = new BrowserProvider(wallet.provider);
       const signer = await provider.getSigner();
       const tx = await signer.sendTransaction({
-        to: "0xRecipientAddress",
+        to: "0xRecipientAddress", // Replace with actual recipient address
         value: parseEther(amount),
       });
 
       console.log("Transaction sent:", tx.hash);
+      onClose(); // Close the modal after successful transaction
     } catch (err) {
       console.error("Swap failed:", err);
       setError("Transaction failed. Please try again.");
@@ -67,16 +66,16 @@ const SwapModal = ({ isOpen, onClose, wallet }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-gray-dark">
         <h3 className="mb-4 text-xl font-bold text-dark dark:text-white">
-          Swap Tokens - {wallet.label}
+          Swap Tokens - {wallet.provider}
         </h3>
         <SelectGroupOne
           label="From"
           name="fromToken"
           value={fromToken}
           onChange={(e) => setFromToken(e.target.value)}
-          options={wallet.accounts.map((account) => ({
-            value: account.address,
-            label: `${account.balance} ETH`,
+          options={wallet.tokenBalances.map((token) => ({
+            value: token.symbol,
+            label: `${token.balance} ${token.symbol}`,
           }))}
         />
         <InputGroup
@@ -86,7 +85,8 @@ const SwapModal = ({ isOpen, onClose, wallet }) => {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <div className="flex justify-end gap-4">
+        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        <div className="flex justify-end gap-4 mt-4">
           <button onClick={onClose} className="bg-gray-200 px-4 py-2 rounded-lg">
             Cancel
           </button>

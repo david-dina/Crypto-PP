@@ -47,7 +47,8 @@ model Wallet {
   address     String
   blockchain  String
   balance     Float    @default(0.0)
-  provider    Provider
+  provider    String
+  providerImage String?
   userId      String?
   companyId   String?
   createdAt   DateTime @default(now())
@@ -56,26 +57,17 @@ model Wallet {
   User        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   Company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, address]) // Ensure provider and address are unique together
+  @@unique([address,provider, blockchain]) // Ensure provider and address are unique together
 }
 
 model TokenBalance {
   id         String   @id @default(cuid())
-  walletId  String
-  tokenName String
-  contract  String
-  symbol    String
-  decimals  Int
-  balance   Float
-  wallet    Wallet @relation(fields: [walletId], references: [id],onDelete: Cascade)
-}
-
-enum Provider {
-  Phantom
-  MetaMask
-  CoinbaseWallet
-  TrustWallet
-  BinanceWallet
+  walletId   String
+  tokenName  String   // Token name/symbol (e.g., "USDC")
+  balance    Float    // Token balance (e.g., 100.0)
+  icon       String?  // Optional: Token icon URL
+  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  @@unique([walletId,tokenName])
 }
 
 model ActivityLog {

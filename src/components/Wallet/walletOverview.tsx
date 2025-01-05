@@ -4,24 +4,60 @@ import { FaChevronDown, FaChevronUp, FaStar, FaRegStar } from "react-icons/fa";
 import WalletDropdown from "./walletDropdown";
 import SwapModal from "./SwapModal";
 import TransferModal from "./TransferModal";
-import { BrowserProvider } from "ethers";
-import {ProviderModal} from "./ProviderModal";
+import Onboard from '@web3-onboard/core';
+import injectedModule from '@web3-onboard/injected-wallets';
+import toast from "react-hot-toast";
+import ChainSelectionModal from "./ChainSelectModal";
 
-declare global {
-  interface Window {
-    ethereum?: any;
-    phantom?: any;
+const injected = injectedModule();
+const onboard = Onboard({
+  wallets: [injected],
+  chains: [
+    {
+      id: '0x1', // Ethereum Mainnet
+      token: 'ETH',
+      label: 'Ethereum Mainnet',
+      rpcUrl: 'https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID'
+    },
+    {
+      id: '0x89', // Polygon Mainnet
+      token: 'MATIC',
+      label: 'Polygon Mainnet',
+      rpcUrl: 'https://polygon-mainnet.infura.io/v3/6318caa00e7a48e8a961f00bf056b473'
+    },
+    {
+      id: '0x38', // Binance Smart Chain (BSC) Mainnet
+      token: 'BNB',
+      label: 'Binance Smart Chain',
+      rpcUrl: 'https://bsc-mainnet.infura.io/v3/6318caa00e7a48e8a961f00bf056b473'
+    },
+  ],
+  appMetadata: {
+    name: 'NexPay',
+    icon: 'https://your-app-icon.png',
+    description: 'Your most reliable crypto processor',
+  },
+  accountCenter: {
+    desktop: {
+      position: "bottomRight",
+      enabled: true
+    },
+    mobile: {
+      position: "bottomRight",
+      enabled: true
+    }
+  },
+  connect: {
+    autoConnectAllPreviousWallet: true
   }
-}
+});
 
 const WalletTable = () => {
   const [walletData, setWalletData] = useState<any[]>([]);
-  const [providers, setProviders] = useState([]);
   const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
   const [primaryWallet, setPrimaryWallet] = useState<string | null>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isProviderModalOpen, setIsProviderModalOpen] = useState(false);
   const [isSwapModalOpen, setSwapModalOpen] = useState({
     isOpen: false,
     wallet: null,
@@ -30,187 +66,174 @@ const WalletTable = () => {
     isOpen: false,
     wallet: null,
   });
+  const [isChainModalOpen, setChainModalOpen] = useState(false);
+
+  const fetchWallets = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/wallets/getWallets', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWalletData(data.data);
+      } else {
+        console.error('Failed to fetch wallets');
+      }
+    } catch (err) {
+      console.error(err);
+      setError(`${err}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchWallets = async () => {
-      try {
-        const response = await fetch('/api/wallets/getWallets', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          console.log(data.data)
-          setWalletData(data.data);
-        } else {
-          console.error('Failed to fetch wallets');
-        }
-      } catch (err) {
-        console.error(err);
-        setError(`${err}`);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchWallets();
   }, []);
 
+  const detectBlockchain = async (provider: any) => {
+    try {
+      // Check for Bitcoin-specific providers
+      if (provider.isBitcoin) {
+        return "Bitcoin";
+      }
 
-  const detectSupportedProviders = () => {
-    const supportedProviders = [];
-     // Check for Phantom (Solana)
-    if (window.phantom && window.phantom.isPhantom) {
-      supportedProviders.push("Phantom");
+      // Fallback to EVM chain detection
+      if (provider.request && typeof provider.request === 'function') {
+        const chainId = await provider.request({ method: 'eth_chainId' });
+        switch (chainId) {
+          case '0x1': return 'Ethereum';
+          case '0x38': return 'BinanceSmartChain';
+          case '0x89': return 'Polygon';
+          default: return `Unsupported Chain (ID: ${chainId})`;
+        }
+      }
+
+      // Fallback for non-EVM chains
+      if (provider.getNetwork && typeof provider.getNetwork === 'function') {
+        const network = await provider.getNetwork();
+        if (network.includes('solana')) return 'Solana';
+        else return `Unsupported Chain (Network: ${network})`;
+      }
+
+      return 'Unsupported Chain';
+    } catch (error) {
+      console.error('Error detecting blockchain:', error);
+      return 'Unsupported Chain';
     }
-  
-    // Check for MetaMask
-    if (window.ethereum && window.ethereum.isMetaMask) {
-      supportedProviders.push("MetaMask");
-    }
-  
-    // Check for Coinbase Wallet
-    if (window.ethereum && window.ethereum.isCoinbaseWallet) {
-      supportedProviders.push("Coinbase Wallet");
-    }
-  
-    // Check for Trust Wallet
-    if (window.ethereum && window.ethereum.isTrust) {
-      supportedProviders.push("Trust Wallet");
-    }
-  
-    // Check for Binance Wallet
-    if (window.ethereum && window.ethereum.isBinanceWallet) {
-      supportedProviders.push("Binance Wallet");
-    }
-  
-    console.log("Supported providers detected:", supportedProviders);
-    return supportedProviders;
   };
+
+  const detectInjectors = () => {
+      const detectedProviders = [];
+      if (window.ethereum) {
+        detectedProviders.push({ name: "Ethereum", id: "ethereum" });
+      }
+      if (window.solana) {
+        detectedProviders.push({ name: "Solana", id: "solana" });
+      }
+      if (window.btc) {
+        detectedProviders.push({ name: "Bitcoin", id: "bitcoin" });
+      }
+      return detectedProviders;
+  }
 
   const handleWalletConnection = async () => {
-    console.log("Connecting to wallet...");
-  
-    const providers = detectSupportedProviders();
-    if (providers.length === 0) {
-      console.log("No Ethereum wallet detected. Please install a wallet like MetaMask.");
-      return;
-    }
-  
-    if (providers.length > 1) {
-      console.log("Multiple wallets detected:", providers);
-      setProviders(providers);
-      setIsProviderModalOpen(true); // Open modal to let the user choose a wallet
-    } else {
-      console.log("Single wallet detected:", providers);
-      await connectToWallet(handleSelectProvider(providers[0])); // Connect to the single detected wallet
-    }
+    // Open the chain selection modal
+    const detectedProviders = detectInjectors();
+    if (detectedProviders.length === 1) {
+      handleChainSelection(detectedProviders[0].id);
+    }else if(detectedProviders.length ===0){
+      handleChainSelection("ethereum");
+    }else{
+    setChainModalOpen(true);
+  }
   };
 
-  const handleSelectProvider = async (providerName) => {
-    setIsProviderModalOpen(false);
-  
-    let provider;
-    switch (providerName) {
-      case "MetaMask":
-        provider = window.ethereum?.isMetaMask
-        break;
-      case "Coinbase Wallet":
-        provider = window.ethereum?.isCoinbaseWallet
-        break;
-      case "Trust Wallet":
-        provider = window.ethereum?.isTrust
-        break;
-      case "Binance Wallet":
-        provider = window.ethereum?.isBinanceWallet
-        break;
-      case "Phantom":
-        provider = window.phantom?.isPhantom
-        break;
-      default:
-        console.error("Unsupported provider:", providerName);
-        return;
-    }
-  
-    if (!provider) {
-      console.error(`Provider ${providerName} not found.`);
-      return;
-    }
-  
-    await connectToWallet(provider); // Connect to the selected provider
-  };
+  const handleChainSelection = async (selectedChain: string) => {
+    setChainModalOpen(false); // Close the modal
 
-  const connectToWallet = async (provider) => {
     try {
-      const ethersProvider = new BrowserProvider(provider);
-      await ethersProvider.send("eth_requestAccounts", []);
-      const signer = await ethersProvider.getSigner();
-      const address = await signer.getAddress();
+      let wallets = [];
 
-      const blockchain = "Ethereum";
-      const providerName = detectProvider(provider);
+      // Connect wallet based on the selected chain
+      if (selectedChain === "ethereum") {
+        wallets = await onboard.connectWallet(); // Connect EVM wallet
+      } else if (selectedChain === "solana") {
+        wallets = await connectSolanaWallet(); // Fake function for Solana
+      } else if (selectedChain === "bitcoin") {
+        wallets = await connectBitcoinWallet(); // Fake function for Bitcoin
+      }
 
-      await saveWalletToDatabase(address, blockchain, providerName);
+      if (wallets.length > 0) {
+        const walletList = [];
+
+        // Process wallet details
+        for (const wallet of wallets) {
+          const { provider, label, accounts,icon } = wallet;
+          const address = accounts[0].address;
+          const blockchain = await detectBlockchain(provider);
+          const providerName = label;
+
+          walletList.push({ address, blockchain, provider: providerName,providerImage:icon });
+        }
+
+        // Save to database
+        await saveWalletToDatabase(walletList);
+      }
     } catch (error) {
       console.error("Error connecting to wallet:", error);
+      toast.error("Failed to connect wallet. Please try again.");
     }
   };
 
-  const saveWalletToDatabase = async (address: string, blockchain: string, provider: string) => {
+  const saveWalletToDatabase = async (walletList: { address: string; blockchain: string; provider: string }[]) => {
     try {
-      console.log(provider)
       const response = await fetch('/api/wallets/saveWallet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ address, blockchain,provider }),
+        body: JSON.stringify({ wallets: walletList }), // Send the list of wallets
       });
-
       if (response.ok) {
-        console.log('Wallet saved to database');
-        window.location.reload();
+        toast.success("Wallets connected successfully");
+        console.log('Wallets saved to database');
+        fetchWallets();
       } else {
-        console.error('Failed to save wallet to database');
+        console.error('Failed to save wallets to database');
       }
     } catch (error) {
-      console.error('Error saving wallet to database:', error);
+      console.error('Error saving wallets to database:', error);
     }
   };
 
-  const detectProvider = (provider: any) => {
-    if (provider.isPhantom) {
-      return "Phantom";}
-    else if (provider.isMetaMask) {
-      return "MetaMask";
-    } else if (provider.isCoinbaseWallet) {
-      return "CoinbaseWallet";
-    } else if (provider.isTrust) {
-      return "TrustWallet";
-    } else if (provider.isBinanceWallet) {
-      return "BinanceWallet";
-    }
+  // Fake functions for Solana and Bitcoin
+  const connectSolanaWallet = async () => {
+    return [{ provider: "Solana", label: "Phantom", accounts: [{ address: "SOL-ADDRESS" }] }];
   };
 
-  // Store last refreshed time for each wallet
+  const connectBitcoinWallet = async () => {
+    return [{ provider: "Bitcoin", label: "BTC Wallet", accounts: [{ address: "BTC-ADDRESS" }] }];
+  };
+
   const [refreshTimes, setRefreshTimes] = useState<{ [key: string]: string }>(() => {
     const initialTimes: { [key: string]: string } = {};
     walletData.forEach((wallet) => {
-      initialTimes[wallet.address] = new Date().toLocaleString(); // Use wallet address as key
+      initialTimes[wallet.address] = new Date().toLocaleString();
     });
     return initialTimes;
   });
 
-  // Toggle dropdown to expand/collapse wallet details
   const toggleDropdown = (walletAddress: string) => {
     setExpandedWallet(expandedWallet === walletAddress ? null : walletAddress);
   };
 
-  // Toggle primary wallet
   const togglePrimaryWallet = (walletAddress: string) => {
     setPrimaryWallet(primaryWallet === walletAddress ? null : walletAddress);
   };
 
-  // Update the last refreshed time for a specific wallet
   const handleRefresh = (walletAddress: string) => {
     const newTimes = { ...refreshTimes };
     newTimes[walletAddress] = new Date().toLocaleString();
@@ -219,28 +242,18 @@ const WalletTable = () => {
 
   return (
     <div className="rounded-[10px] bg-white px-5 pb-4 pt-5 shadow-1 dark:bg-gray-dark dark:shadow-card w-full">
-      {/* Header */}
       <div className="flex justify-between items-center mb-5">
         <h4 className="text-lg font-bold text-dark dark:text-white">
           Wallet Overview
         </h4>
         <div className="flex items-center gap-2">
-
           <WalletDropdown
             wallets={walletData}
-            refreshWallets={{}} // Pass the fetchWallets function
-            connectWallet={handleWalletConnection} // Pass the handleWalletConnection function
+            refreshWallets={{}}
+            connectWallet={handleWalletConnection}
           />
         </div>
       </div>
-      <ProviderModal
-          isOpen={isProviderModalOpen}
-          onClose={() => setIsProviderModalOpen(false)}
-          providers={providers}
-          onSelectProvider={handleSelectProvider}
-        />
-
-      {/* Loading or Error */}
       {loading ? (
         <div className="flex justify-center items-center py-10 text-gray-600 dark:text-gray-300">
           Loading wallets...
@@ -249,50 +262,36 @@ const WalletTable = () => {
         <div className="flex justify-center items-center py-10 text-red-500">
           Error fetching wallets. Try again later.
         </div>
-      ) : walletData.length === 0 ? (
-        <div className="flex justify-center items-center py-10">
-          <p>No wallets found. Add one to get started.</p>
-          <button
-            onClick={() => {}} // Add functionality here
-            className="rounded-lg px-4 py-2 font-medium transition-colors hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark"
-          >
-            Add Wallet
-          </button>
-        </div>
+      ) : walletData.length === 0 ? (<div className="flex flex-col justify-center items-center py-10 space-y-4">
+        <p className="text-gray-600 dark:text-gray-300">No wallets found. Add one to get started.</p>
+        <button
+          onClick={handleWalletConnection}
+          className="rounded-lg px-6 py-2 font-medium transition-colors hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark"
+        >
+          Add Wallet
+        </button>
+      </div>
       ) : (
         <div className="flex flex-col">
-          {/* Table Header */}
           <div className="hidden sm:grid grid-cols-8 text-center">
-            {/* Group 1: Source */}
             <div className="col-span-2 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Source</h5>
             </div>
-
-            {/* Group 2: Balance */}
             <div className="col-span-1 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Balance</h5>
             </div>
-
-            {/* Group 3: Last Refreshed */}
             <div className="col-span-2 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Last Refreshed</h5>
             </div>
-
-            {/* Group 4: Network */}
             <div className="col-span-1 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Network</h5>
             </div>
-
-            {/* Group 5: Actions */}
             <div className="col-span-2 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Actions</h5>
             </div>
           </div>
-
-          {/* Table Rows */}
           {walletData.map((wallet, key) => (
             <div key={key}>
-              {/* Wallet Row */}
               <div
                 className={`grid sm:grid-cols-8 grid-cols-1 gap-y-4 items-center text-center ${
                   key === walletData.length - 1
@@ -300,17 +299,15 @@ const WalletTable = () => {
                     : "border-b border-stroke dark:border-dark-3"
                 }`}
               >
-                {/* Source */}
                 <div className="col-span-2 flex flex-col sm:flex-row items-center gap-3 px-2 py-4">
                   <img
-                    src={wallet.image || "/images/placeholder.svg"}
+                    src={wallet.providerImage || "/images/placeholder.svg"} // Use providerImage
                     alt={wallet.provider}
                     className="w-8 h-8 rounded-full"
                   />
                   <p className="font-medium text-dark dark:text-white">
                     {wallet.provider}
                   </p>
-                  {/* Primary Wallet Toggle */}
                   <button
                     className="ml-2 text-yellow-500"
                     onClick={() => togglePrimaryWallet(wallet.address)}
@@ -318,8 +315,6 @@ const WalletTable = () => {
                     {primaryWallet === wallet.address ? <FaStar /> : <FaRegStar />}
                   </button>
                 </div>
-
-                {/* Balance */}
                 <div
                   className="col-span-1 flex items-center justify-center px-2 py-4 cursor-pointer"
                   onClick={() => toggleDropdown(wallet.address)}
@@ -331,22 +326,16 @@ const WalletTable = () => {
                     <FaChevronDown className="ml-2 text-dark dark:text-white" />
                   )}
                 </div>
-
-                {/* Last Refreshed */}
                 <div className="col-span-2 flex items-center justify-center px-2 py-4 text-center">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {new Date(wallet.updatedAt).toLocaleString()}
                   </p>
                 </div>
-
-                {/* Network */}
                 <div className="col-span-1 flex items-center justify-center px-2 py-4 text-center">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {wallet.blockchain}
                   </p>
                 </div>
-
-                {/* Actions */}
                 <div className="col-span-2 flex justify-end gap-2 px-2 py-4">
                   <button
                     onClick={() => setSwapModalOpen({ isOpen: true, wallet })}
@@ -362,34 +351,31 @@ const WalletTable = () => {
                   </button>
                 </div>
               </div>
-
-              {/* Dropdown Details */}
               {expandedWallet === wallet.address && (
                 <div className="bg-[#F7F9FC] dark:bg-dark-3 px-4 py-3 rounded-b-md">
                   <h5 className="mb-3 text-sm font-medium text-dark dark:text-white">
                     Portfolio Details
                   </h5>
-                  {/* Wallet Address */}
                   <div className="flex justify-between text-sm font-medium text-dark dark:text-white mb-3">
                     <span>Wallet Address</span>
                     <span className="text-gray-500 dark:text-gray-400">{wallet.address}</span>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {wallet.coins && wallet.coins.length > 0 ? (
-                      wallet.coins.map((coin, idx) => (
+                    {wallet.tokenBalances && wallet.tokenBalances.length > 0 ? (
+                      wallet.tokenBalances.map((token, idx) => (
                         <div
                           key={idx}
                           className="flex justify-between text-sm font-medium text-dark dark:text-white"
                         >
-                          <span>{coin.coin}</span>
+                          <span>{token.tokenName}</span>
                           <span>
-                            {coin.balance} ({coin.value})
+                            {token.balance} {token.icon && <img src={token.icon} alt={token.tokenName} className="w-4 h-4 inline-block" />}
                           </span>
                         </div>
                       ))
                     ) : (
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No coins available
+                        No tokens available
                       </p>
                     )}
                   </div>
@@ -399,11 +385,15 @@ const WalletTable = () => {
           ))}
         </div>
       )}
-
+      <ChainSelectionModal
+        isOpen={isChainModalOpen}
+        onClose={() => setChainModalOpen(false)}
+        onSelect={handleChainSelection}
+      />
       <SwapModal
         isOpen={isSwapModalOpen.isOpen}
         onClose={() => setSwapModalOpen({ isOpen: false, wallet: null })}
-        wallet={isSwapModalOpen.wallet} // Pass wallet data to modal
+        wallet={isSwapModalOpen.wallet}
       />
       <TransferModal
         isOpen={isTransferModalOpen.isOpen}

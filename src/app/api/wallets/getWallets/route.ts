@@ -39,8 +39,9 @@ export async function GET(req: Request) {
         id: true,
         address: true,
         blockchain: true,
-        provider: true,
         balance: true,
+        provider: true,
+        providerImage:true,
         updatedAt: true,
       },
       skip: (page - 1) * limit,
@@ -56,26 +57,27 @@ export async function GET(req: Request) {
       select: {
         walletId: true,
         tokenName: true,
-        contract: true,
-        symbol: true,
-        decimals: true,
         balance: true,
+        icon: true, // Include the icon field
       },
     });
 
     // Combine wallets with their tokenBalances
-    const formattedWallets = wallets.map((wallet) => ({
-      ...wallet,
-      tokenBalances: tokenBalances
-        .filter((tb) => tb.walletId === wallet.id) // Match balances by wallet ID
-        .map((tb) => ({
-          tokenName: tb.tokenName,
-          contract: tb.contract,
-          symbol: tb.symbol,
-          decimals: tb.decimals,
-          balance: tb.balance,
-        })), // Map to remove walletId from balances
-    }));
+    const formattedWallets = wallets.map((wallet) => {
+      const nativeTokenSymbol = getNativeTokenSymbol(wallet.blockchain);
+
+      return {
+        ...wallet,
+        tokenBalances: tokenBalances
+          .filter((tb) => tb.walletId === wallet.id && tb.tokenName !== nativeTokenSymbol) // Match balances by wallet ID and exclude native tokens
+          .map((tb) => ({
+            tokenName: tb.tokenName,
+            walletId: tb.walletId,
+            balance: tb.balance,
+            icon: tb.icon, // Include the icon field
+          })), // Map to remove walletId from balances
+      };
+    });
 
     // Return the wallets with pagination metadata
     return new Response(
@@ -102,5 +104,21 @@ export async function GET(req: Request) {
 
     // Generic error response
     return new Response("Failed to fetch wallets", { status: 500 });
+  }
+}
+
+// Helper function to get the native token symbol for a blockchain
+function getNativeTokenSymbol(blockchain: string): string {
+  switch (blockchain) {
+    case "Ethereum":
+      return "ETH";
+    case "Polygon":
+      return "MATIC";
+    case "BinanceSmartChain":
+      return "BNB";
+    case "Bitcoin":
+      return "BTC";
+    default:
+      throw new Error(`Unsupported blockchain: ${blockchain}`);
   }
 }

@@ -26,7 +26,6 @@
     "@web3-onboard/core": "^2.23.1",
     "@web3-onboard/injected-wallets": "^2.11.3",
     "@web3-onboard/react": "^2.10.0",
-    "@web3-onboard/wagmi": "^2.0.1",
     "algoliasearch": "^4.23.2",
     "apexcharts": "^3.45.2",
     "axios": "^1.6.8",
