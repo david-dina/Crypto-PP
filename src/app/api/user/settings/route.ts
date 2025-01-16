@@ -27,11 +27,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           name: true,
-          taxID: true,
           currency: true,
-          restrictedRegions: true,
-          taxRate: true,
-          taxComplianceNote: true,
         },
       },
     },

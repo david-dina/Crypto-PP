@@ -211,13 +211,6 @@ const SettingsPage = () => {
           </div>
 
           <CheckboxOne
-            label="Enable 2FA"
-            checked={userData?.twoFactorEnabled}
-            onChange={() => setTwoFAModalOpen(true)}
-            name="Enable2FA"
-          />
-
-          <CheckboxOne
             label="Enable Email Notifications"
             checked={userData?.sendEmailNotifications}
             onChange={handleInputChange}

@@ -58,7 +58,7 @@ export async function GET(req: Request) {
         walletId: true,
         tokenName: true,
         balance: true,
-        icon: true, // Include the icon field
+        symbol: true,
       },
     });
 
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
             tokenName: tb.tokenName,
             walletId: tb.walletId,
             balance: tb.balance,
-            icon: tb.icon, // Include the icon field
+            symbol: tb.symbol, // Include the icon field
           })), // Map to remove walletId from balances
       };
     });
@@ -111,6 +111,8 @@ export async function GET(req: Request) {
 function getNativeTokenSymbol(blockchain: string): string {
   switch (blockchain) {
     case "Ethereum":
+      return "ETH";
+    case "Sepolia":
       return "ETH";
     case "Polygon":
       return "MATIC";

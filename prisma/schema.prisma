@@ -65,7 +65,7 @@ model TokenBalance {
   walletId   String
   tokenName  String   // Token name/symbol (e.g., "USDC")
   balance    Float    // Token balance (e.g., 100.0)
-  icon       String?  // Optional: Token icon URL
+  symbol     String  
   wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
   @@unique([walletId,tokenName])
 }

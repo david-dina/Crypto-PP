@@ -2,7 +2,7 @@
 
 import React from 'react';
 import ChartOne from '@/components/Charts/ChartOne';
-import WalletTable from '@/components/Wallet/walletTable';
+import WalletTable from '@/components/Wallet/WalletTable';
 import NotificationsTable from '@/components/Tables/NotificationTable';
 import UpcomingPayments from '@/components/Charts/UpcomingPayments';
 import SubscriptionsOverview from '@/components/Subscriptions/SubscriptionOverview';

@@ -7,6 +7,8 @@ import TransferModal from "./TransferModal";
 import Onboard from '@web3-onboard/core';
 import injectedModule from '@web3-onboard/injected-wallets';
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { requireSupportedChain } from "@/libs/chainConfig";
 
 declare global {
   interface Window {
@@ -16,113 +18,6 @@ declare global {
 }
 
 const injected = injectedModule();
-const onboard = Onboard({
-  wallets: [injected],
-  chains: [
-    {
-      id: '0x1', // Ethereum Mainnet
-      token: 'ETH',
-      label: 'Ethereum Mainnet',
-      rpcUrl: `https://mainnet.infura.io/v3/6318caa00e7a48e8a961f00bf056b473`,
-      secondaryTokens: [
-        {
-          address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#2775C9"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // USDT
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#26A17B"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', // DAI
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#F4B731"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // wETH
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#627EEA"/><path d="M8 2L10.5 8.5L8 10L5.5 8.5L8 2Z" fill="white"/><path d="M8 10L10.5 8.5L8 14L5.5 8.5L8 10Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f', // UNI
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#FF007A"/><path d="M5 6C5 5.44772 5.44772 5 6 5H10C10.5523 5 11 5.44772 11 6V10C11 10.5523 10.5523 11 10 11H6C5.44772 11 5 10.5523 5 10V6Z" fill="white"/></svg>`
-        },
-      ]
-    },
-    {
-      id: '0x89', // Polygon Mainnet
-      token: 'MATIC',
-      label: 'Polygon Mainnet',
-      rpcUrl: 'https://polygon-mainnet.infura.io/v3/6318caa00e7a48e8a961f00bf056b473',
-      secondaryTokens: [
-        {
-          address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // USDC
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#2775C9"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x3813e82e6f7098b9583FC0F33a962D02018B6803', // USDT
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#26A17B"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063', // DAI
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#F4B731"/><path d="M8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8C11 9.65685 9.65685 11 8 11Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0', // wMATIC
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#8247E5"/><path d="M8 2L10.5 8.5L8 10L5.5 8.5L8 2Z" fill="white"/><path d="M8 10L10.5 8.5L8 14L5.5 8.5L8 10Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x831753DD7087CaC61aB5644b308642cc1c33Dc13', // QUICK
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#FF007A"/><path d="M5 6C5 5.44772 5.44772 5 6 5H10C10.5523 5 11 5.44772 11 6V10C11 10.5523 10.5523 11 10 11H6C5.44772 11 5 10.5523 5 10V6Z" fill="white"/></svg>`
-        }
-      ]
-
-    },
-    {
-      id: '0x38', // Binance Smart Chain (BSC)
-      token: 'BNB',
-      label: 'Binance Smart Chain',
-      rpcUrl: 'https://bsc-dataseed.binance.org/',
-      secondaryTokens: [
-        {
-          address: '0xe9e7cea3dedca5984780bafc599bd69add087d56', // BUSD
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" rx="8" fill="#F0B90B"/><path d="M7.68 3.734L6.305 5.108 8.92 7.722 10.295 6.348 7.68 3.734ZM4.705 6.712L3.33 8.087 6.675 11.432 8.05 10.058 4.705 6.712ZM10.87 6.933L8.255 9.548 9.63 10.923 12.245 8.308 10.87 6.933ZM8.255 11.507L6.88 12.882 8.255 14.257 9.63 12.882 8.255 11.507Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', // CAKE
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#D1884F"/><path d="M5.5 6.5C5.5 5.67157 6.17157 5 7 5H9C9.82843 5 10.5 5.67157 10.5 6.5C10.5 7.32843 9.82843 8 9 8H7C6.17157 8 5.5 7.32843 5.5 6.5Z" fill="white"/><circle cx="6" cy="5" r="1" fill="white"/><circle cx="10" cy="5" r="1" fill="white"/></svg>`
-        },
-        {
-          address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#F3BA2F"/><path d="M8 4L10 8L8 12L6 8L8 4Z" fill="white"/></svg>`
-        },
-        {
-          address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3EAd9c', // BTCB
-          icon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="8" cy="8" r="8" fill="#F7931A"/><path d="M10 5H6V11H10V5Z" fill="white"/><path d="M7 6H9V7H7V6ZM7 9H9V10H7V9Z" fill="#F7931A"/></svg>`
-        }
-      ]
-
-    },
-  ],
-  appMetadata: {
-    name: 'NexPay',
-    icon: 'https://your-app-icon.png',
-    description: 'Your most reliable crypto processor',
-  },
-  accountCenter: {
-    desktop: {
-      position: "bottomRight",
-      enabled: true
-    },
-    mobile: {
-      position: "bottomRight",
-      enabled: true
-    }
-  },
-  connect: {
-    autoConnectAllPreviousWallet: true
-  }
-});
-
-
 
 const WalletTable = () => {
   const [walletData, setWalletData] = useState<any[]>([]);
@@ -138,6 +33,39 @@ const WalletTable = () => {
     isOpen: false,
     wallet: null,
   });
+  const [onboardInstance, setOnboardInstance] = useState<any>(null);
+
+  useEffect(() => {
+    const initOnboard = () => {
+      const onboard = Onboard({
+        wallets: [injected],
+        chains: [
+          {
+            id: 11155111,
+            token: 'ETH',
+            label: 'Sepolia',
+            rpcUrl: 'https://sepolia.infura.io/v3/6318caa00e7a48e8a961f00bf056b473s'
+          }
+        ],
+        appMetadata: {
+          name: 'NexPay (Test)',
+          icon: '<your-actual-icon-url>',
+          description: 'Testing crypto processor on Sepolia',
+        },
+        theme: 'system',
+        accountCenter: {
+          desktop: { position: 'bottomRight', enabled: true },
+          mobile: { position: 'bottomRight', enabled: true },
+        },
+        connect: {
+          autoConnectAllPreviousWallet: true,
+        },
+      });
+      setOnboardInstance(onboard);
+    };
+    fetchWallets();
+    initOnboard();
+  }, []);
 
   const fetchWallets = async () => {
     setLoading(true);
@@ -162,7 +90,7 @@ const WalletTable = () => {
 
   useEffect(() => {
     if(loading) return;
-    const stateWallets = onboard.state.get()
+    const stateWallets = onboardInstance.state.get()
     const wallets = stateWallets.wallets
     if (wallets.length > 0){
     setPrimaryWallet(wallets[0].accounts[0].address)
@@ -171,48 +99,69 @@ const WalletTable = () => {
 
 
   useEffect(() => {
-    fetchWallets();
-    const state = onboard.state.select('wallets')
-    const { unsubscribe } = state.subscribe((update) => setPrimaryWallet(update[0].accounts[0].address))
-  }, []);
+    if (!onboardInstance) return;
+    // Subscribe to changes in the `wallets` state
+    const subscription = onboardInstance.state.select('wallets').subscribe((updatedWallets) => {
+      if (updatedWallets.length > 0) {
+        // Typically, we focus on the first wallet
+        const firstWallet = updatedWallets[0]
+        const { label, accounts, chains } = firstWallet
 
-  const detectBlockchain = async (provider: any) => {
-    try {
-      if (provider.request && typeof provider.request === 'function') {
-        const chainId = await provider.request({ method: 'eth_chainId' });
-        switch (chainId) {
-          case '0x1': return 'Ethereum';
-          case '0x38': return 'BinanceSmartChain';
-          case '0x89': return 'Polygon';
-          default: return `Unsupported Chain (ID: ${chainId})`;
+        // If there's at least one account, get the address
+        const address = accounts.length > 0 ? accounts[0].address : null
+
+        // If there's at least one chain, get chain info
+        // Note: `chain.id` is often a hex string like '0x1' for Ethereum
+        const chainIdHex = chains.length > 0 ? chains[0].id : null
+        const chainId = chainIdHex ? parseInt(chainIdHex, 16) : null
+
+        console.log('Wallet label:', label)
+        console.log('Active address:', address)
+        console.log('Active chainId:', chainId)
+        
+        // If chain changes from 1 -> 56, you'll see that update here
+
+        // ... Do something whenever chain changes, e.g., re-fetch data, or update DB
+        if (chainId) {
+          // Possibly store chainId and address in state or call your backend
+          // updateChainInDatabase({ address, chainId, providerLabel: label })
         }
       }
-      return 'Unsupported Chain';
-    } catch (error) {
-      console.error('Error detecting blockchain:', error);
-      return 'Unsupported Chain';
-    }
-  };
+    })
+
+    // Cleanup on unmount
+    return () => subscription.unsubscribe()
+  }, [onboardInstance])
 
   const handleWalletConnection = async () => {
+    if (!onboardInstance) return;
     try {
-      const wallets = await onboard.connectWallet();
+      const wallets = await onboardInstance.connectWallet();
+      console.log("Connecting..")
 
       if (wallets.length > 0) {
         const walletList = [];
 
         // Process wallet details
         for (const wallet of wallets) {
-          const { provider, label, accounts,icon } = wallet;
-          const address = accounts[0].address;
-          const blockchain = await detectBlockchain(provider);
-          const providerName = label;
+          try {
+            const { provider, label, accounts, icon } = wallet;
+            const address = accounts[0].address;
+            const blockchain = await requireSupportedChain(provider);
+            const providerName = label;
 
-          walletList.push({ address, blockchain, provider: providerName, providerImage:icon });
+            walletList.push({ address, blockchain, provider: providerName, providerImage: icon });
+          } catch (error: any) {
+            // Handle chain validation error
+            toast.error(error.message || "Please connect to a supported network");
+            return; // Exit early if chain validation fails
+          }
         }
 
-        // Save to database
-        await saveWalletToDatabase(walletList);
+        // Only save to database if all wallets are on supported chains
+        if (walletList.length > 0) {
+          await saveWalletToDatabase(walletList);
+        }
       }
     } catch (error) {
       console.error("Error connecting to wallet:", error);
@@ -220,24 +169,38 @@ const WalletTable = () => {
     }
   };
 
-  const saveWalletToDatabase = async (walletList: { address: string; blockchain: string; provider: string }[]) => {
+  const saveWalletToDatabase = async (walletList: { 
+    address: string; 
+    blockchain: string; 
+    provider: string;
+    providerImage?: string; 
+  }[]) => {
     try {
       const response = await fetch('/api/wallets/saveWallet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ wallets: walletList }), // Send the list of wallets
+        body: JSON.stringify({ wallets: walletList }),
       });
-      if (response.ok) {
-        toast.success("Wallets connected successfully");
-        console.log('Wallets saved to database');
-        fetchWallets();
-      } else {
-        console.error('Failed to save wallets to database');
+      
+      if (!response.ok) {
+        // Add better error handling based on status codes
+        if (response.status === 409) {
+          toast.error("Wallet already exists");
+        } else if (response.status === 401) {
+          toast.error("Please login to connect wallets");
+        } else {
+          toast.error("Failed to save wallets");
+        }
+        return;
       }
+      
+      toast.success("Wallets connected successfully");
+      fetchWallets();
     } catch (error) {
       console.error('Error saving wallets to database:', error);
+      toast.error("Failed to connect wallet");
     }
   };
 
@@ -256,12 +219,12 @@ const WalletTable = () => {
 
   const togglePrimaryWallet = async (walletAddress: string) => {
     // Ensure wallets are retrieved properly
-    const currentWallets = onboard.state.select('wallets');
+    const currentWallets = onboardInstance.state.select('wallets');
   
     const wallet = currentWallets.find((w) => w.accounts[0].address === walletAddress); // Use find() instead of map()
   
     if (wallet) {
-      onboard.state.actions.setPrimaryWallet(wallet); // Set primary wallet
+      onboardInstance.state.actions.setPrimaryWallet(wallet); // Set primary wallet
       setPrimaryWallet(walletAddress); // Update state
     }
   };
@@ -336,10 +299,14 @@ const WalletTable = () => {
                     {wallet.provider}
                   </p>
                   <button
-                    className="ml-2 text-yellow-500"
+                    className="ml-2 text-yellow-500 hover:scale-110 transition-transform"
                     onClick={() => togglePrimaryWallet(wallet.address)}
                   >
-                    {primaryWallet === wallet.address ? <FaStar /> : <FaRegStar />}
+                    {primaryWallet === wallet.address ? (
+                      <FaStar className="drop-shadow-md" />
+                    ) : (
+                      <FaRegStar />
+                    )}
                   </button>
                 </div>
                 <div
@@ -354,59 +321,77 @@ const WalletTable = () => {
                   )}
                 </div>
                 <div className="col-span-2 flex items-center justify-center px-2 py-4 text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-dark dark:text-white">
                     {new Date(wallet.updatedAt).toLocaleString()}
                   </p>
                 </div>
                 <div className="col-span-1 flex items-center justify-center px-2 py-4 text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-dark dark:text-white">
                     {wallet.blockchain}
                   </p>
                 </div>
-                <div className="col-span-2 flex justify-end gap-2 px-2 py-4">
+                <div className="col-span-2 flex justify-end gap-3 px-2 py-4">
                   <button
                     onClick={() => setSwapModalOpen({ isOpen: true, wallet })}
-                    className="rounded-lg px-4 py-2 font-medium transition-colors hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark"
+                    className="rounded-lg px-4 py-2 font-medium transition-all hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark hover:-translate-y-0.5"
                   >
                     Swap
                   </button>
                   <button
                     onClick={() => setTransferModalOpen({ isOpen: true, wallet })}
-                    className="font-medium transition-colors hover:underline text-black dark:text-white"
+                    className="rounded-lg px-4 py-2 font-medium transition-all hover:shadow-md border border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary dark:hover:border-primary-light dark:hover:text-primary-light hover:-translate-y-0.5"
                   >
                     Transfer
                   </button>
                 </div>
               </div>
               {expandedWallet === wallet.address && (
-                <div className="bg-[#F7F9FC] dark:bg-dark-3 px-4 py-3 rounded-b-md">
-                  <h5 className="mb-3 text-sm font-medium text-dark dark:text-white">
-                    Portfolio Details
-                  </h5>
-                  <div className="flex justify-between text-sm font-medium text-dark dark:text-white mb-3">
-                    <span>Wallet Address</span>
-                    <span className="text-gray-500 dark:text-gray-400">{wallet.address}</span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {wallet.tokenBalances && wallet.tokenBalances.length > 0 ? (
-                      wallet.tokenBalances.map((token, idx) => (
-                        <div
-                          key={idx}
-                          className="flex justify-between text-sm font-medium text-dark dark:text-white"
-                        >
-                          <span>{token.tokenName}</span>
-                          <span>
-                            {token.balance} {token.icon && <img src={token.icon} alt={token.tokenName} className="w-4 h-4 inline-block" />}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No tokens available
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <AnimatePresence>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="backdrop-blur-sm bg-white/5 dark:bg-dark/5 px-6 py-4 rounded-lg">
+                      <h5 className="mb-4 text-sm font-semibold text-dark dark:text-white">
+                        Portfolio Details
+                      </h5>
+                      <div className="flex justify-between text-sm font-medium text-dark dark:text-white mb-4 p-3 bg-white/50 dark:bg-dark/50 backdrop-blur-md rounded-lg">
+                        <span>Wallet Address</span>
+                        <span className="font-mono">{wallet.address}</span>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        {wallet.tokenBalances && wallet.tokenBalances.length > 0 ? (
+                          wallet.tokenBalances.map((token, idx) => (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: idx * 0.1 }}
+                              key={idx}
+                              className="flex justify-between items-center text-sm font-medium text-dark dark:text-white p-3 bg-white/50 dark:bg-dark/50 backdrop-blur-md rounded-lg hover:bg-white/70 dark:hover:bg-dark/70 transition-colors"
+                            >
+                              <span className="flex items-center gap-2">
+                                {token.icon && <img src={token.icon} alt={token.tokenName} className="w-5 h-5" />}
+                                {token.tokenName}
+                              </span>
+                              <span className="font-mono">{token.balance}</span>
+                            </motion.div>
+                          ))
+                        ) : (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-sm text-gray-500 dark:text-gray-400 text-center py-4"
+                          >
+                            No tokens available
+                          </motion.p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </div>
           ))}

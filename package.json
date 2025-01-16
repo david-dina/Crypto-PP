@@ -37,6 +37,7 @@
     "ether": "^0.0.9",
     "ethers": "^6.13.4",
     "flatpickr": "^4.6.13",
+    "framer-motion": "^11.18.0",
     "jsvectormap": "^1.5.3",
     "lucia": "^3.2.0",
     "next": "^14.1.4",

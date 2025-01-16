@@ -1,7 +1,9 @@
 "use server";
 import { prisma } from "@/libs/prismaDb";
 import { isAuthorized } from "@/libs/isAuthorized";
-
+import { getChainConfigByName } from "@/libs/chainConfig";
+import { chainNameToKey, getChainTokenConfigByKey } from "@/libs/tokenConfig";
+import { ethers, JsonRpcProvider,formatEther,formatUnits} from "ethers";
 
 export interface SecondaryTokenBalances {
   name: string; // Token symbol (e.g., "USDC")
@@ -25,28 +27,42 @@ export async function POST(req: Request) {
     }
 
     // Log the number of wallets and tokens being saved
-    console.log(`Processing ${wallets.length} wallets with ${wallets.reduce((acc, wallet) => acc + (wallet.secondaryTokens?.length || 0), 0)} tokens`);
+    console.log(`Processing ${wallets.length} wallets s`);
 
     // Process each wallet in the list
     const savedWallets = await Promise.all(
-      wallets.map(async (wallet: { address: string; provider: string; blockchain: string; balance?: number; providerImage?:string; secondaryTokens?: SecondaryTokenBalances[] }) => {
-        const { address, provider, blockchain, balance = 0.0, secondaryTokens,providerImage} = wallet;
-
-        // Validate wallet fields
+      wallets.map(async (wallet: { address: string; provider: string; blockchain: string; providerImage?:string;}) => {
+        const { address, provider, blockchain,providerImage} = wallet;
         if (!address || !provider || !blockchain) {
           throw new Error("Missing required wallet fields");
         }
 
-        // Validate secondary tokens (if provided)
-        if (secondaryTokens) {
-          secondaryTokens.forEach((token) => {
-            if (!token.name || !token.balance) {
-              throw new Error("Missing required token fields");
-            }
-          });
+        const walletCached = await prisma.wallet.findFirst({
+          where: { address: address, provider: provider, blockchain: blockchain },
+        });
+        if (walletCached) {
+        return walletCached;
         }
+        const chainConfig = getChainConfigByName(blockchain);
+        if (!chainConfig) {
+          console.error("Unsupported chain name:", blockchain);
+          return;
+        }
+        const chainKey = chainNameToKey(chainConfig.name);
+        if (!chainKey) {
+          console.error("No matching chainKey found for", chainConfig.name);
+          return;
+        }
+        const tokensConfig = getChainTokenConfigByKey(chainKey);
+        if (!tokensConfig && (chainConfig.name !== "sepolia")) {
+          console.error("No tokens config for chainKey:", chainKey);
+          return;
+        }
+        const RPCprovider = new JsonRpcProvider(chainConfig.rpcUrl);
+        const balanceBig = await RPCprovider.getBalance(address);
+        const balance: number = parseFloat(formatEther(balanceBig));
 
-        // Upsert the wallet (create new entry for each blockchain)
+
         let savedWallet;
         if (user.role === "BUSINESS") {
           const company = await prisma.company.findFirst({
@@ -55,10 +71,8 @@ export async function POST(req: Request) {
           if (!company) {
             throw new Error("Company not found for the user");
           }
-          savedWallet = await prisma.wallet.upsert({
-            where: { address_provider_blockchain: { address, provider, blockchain } }, // Unique constraint
-            update: { balance }, // Update balance if wallet exists
-            create: {
+          savedWallet = await prisma.wallet.create({
+            data: {
               address,
               providerImage,
               blockchain,
@@ -68,10 +82,8 @@ export async function POST(req: Request) {
             },
           });
         } else {
-          savedWallet = await prisma.wallet.upsert({
-            where: { address_provider_blockchain: { address, provider, blockchain } }, // Unique constraint
-            update: { balance }, // Update balance if wallet exists
-            create: {
+          savedWallet = await prisma.wallet.create({
+            data: {
               address,
               blockchain,
               providerImage,
@@ -81,41 +93,26 @@ export async function POST(req: Request) {
             },
           });
         }
-
-        // Upsert secondary tokens (if provided)
-        if (secondaryTokens && secondaryTokens.length > 0) {
-          await Promise.all(
-            secondaryTokens.map((token) => {
-              // Skip native tokens (e.g., ETH, MATIC, BNB)
-              const nativeTokenSymbol = getNativeTokenSymbol(blockchain);
-              if (token.name === nativeTokenSymbol) {
-                console.warn(`Skipping native token ${nativeTokenSymbol} for blockchain ${blockchain}`);
-                return;
-              }
-
-              return prisma.tokenBalance.upsert({
-                where: {
-                  walletId_tokenName: {
-                    walletId: savedWallet.id,
-                    tokenName: token.name,
-                  },
-                },
-                update: {
-                  balance: parseFloat(token.balance),
-                  icon: token.icon || null, // Update icon if provided
-                },
-                create: {
-                  walletId: savedWallet.id,
-                  tokenName: token.name,
-                  balance: parseFloat(token.balance),
-                  icon: token.icon || null, // Save the token icon if available
-                },
-              });
-            })
-          );
+        if (!tokensConfig) {
+          return
         }
-
-        return savedWallet;
+        for (const token of tokensConfig.tokens) {
+          console.log(`Checking balance for ${token.symbol} at address: ${token.address}`);
+          const abi = ["function balanceOf(address owner) view returns (uint256)"];
+          const tokenContract = new ethers.Contract(token.address, abi, RPCprovider);
+          const rawBalance = await tokenContract.balanceOf(address);
+          const formattedBalance = formatUnits(rawBalance, token.decimals);
+          if (parseFloat(formattedBalance) > 0) {
+            return prisma.tokenBalance.create({
+              data: {
+                walletId: savedWallet.id,
+                tokenName: token.name,
+                balance: parseFloat(formattedBalance),
+                symbol: token.symbol,
+              },
+            });
+          }
+        }
       })
     );
 
@@ -131,21 +128,5 @@ export async function POST(req: Request) {
 
     // Generic error response
     return new Response("Failed to save/update wallets", { status: 500 });
-  }
-}
-
-// Helper function to get the native token symbol for a blockchain
-function getNativeTokenSymbol(blockchain: string): string {
-  switch (blockchain) {
-    case "Ethereum":
-      return "ETH";
-    case "Polygon":
-      return "MATIC";
-    case "BinanceSmartChain":
-      return "BNB";
-    case "Bitcoin":
-      return "BTC";
-    default:
-      throw new Error(`Unsupported blockchain: ${blockchain}`);
   }
 }
