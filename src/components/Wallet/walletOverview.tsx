@@ -9,6 +9,7 @@ import injectedModule from '@web3-onboard/injected-wallets';
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { requireSupportedChain } from "@/libs/chainConfig";
+import { WalletData, Web3OnboardWallet } from "@/types/Wallet";
 
 declare global {
   interface Window {
@@ -20,7 +21,8 @@ declare global {
 const injected = injectedModule();
 
 const WalletTable = () => {
-  const [walletData, setWalletData] = useState<any[]>([]);
+  const [walletData, setWalletData] = useState<WalletData[]>([]);
+  const [allDBWallets, setAllDBWallets] = useState<WalletData[]>([])
   const [expandedWallet, setExpandedWallet] = useState<string | null>(null);
   const [primaryWallet, setPrimaryWallet] = useState<string | null>("");
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,82 @@ const WalletTable = () => {
     wallet: null,
   });
   const [onboardInstance, setOnboardInstance] = useState<any>(null);
+  const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
+  const [activeChainId, setActiveChainId] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Define fetchAllWallets before using it in any hooks
+  const fetchAllWallets = async () => {
+    setIsUpdating(true);
+    try {
+      const response = await fetch("/api/wallets/getWallets", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        console.log("Failed to fetch wallets from server");
+        toast.error("Failed to fetch wallets from server");
+        return;
+      }
+
+      const data = await response.json();
+      setAllDBWallets(data.data);
+    } catch (err) {
+      console.error(err);
+      setError(String(err));
+    } finally {
+      setIsUpdating(false);
+      setLoading(false);
+    }
+  };
+
+  // Now we can define the debounced version
+  const [debouncedFetchAllWallets] = useState(() => {
+    const debounce = (fn: Function, ms = 1000) => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return function (...args: any[]) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(null, args), ms);
+      };
+    };
+    
+    return debounce(fetchAllWallets);
+  });
+
+  // Update saveWalletToDatabase to use fetchAllWallets instead of fetchWallets
+  const saveWalletToDatabase = async (walletList: { 
+    address: string; 
+    blockchain: string; 
+    provider: string;
+    providerImage?: string; 
+  }[]) => {
+    try {
+      const response = await fetch('/api/wallets/saveWallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ wallets: walletList }),
+      });
+      
+      if (!response.ok) {
+        if (response.status === 409) {
+          toast.error("Wallet already exists");
+        } else if (response.status === 401) {
+          toast.error("Please login to connect wallets");
+        } else {
+          toast.error("Failed to save wallets");
+        }
+        return;
+      }
+      
+      toast.success("Wallets connected successfully");
+      fetchAllWallets(); // Changed from fetchWallets to fetchAllWallets
+    } catch (error) {
+      console.error('Error saving wallets to database:', error);
+      toast.error("Failed to connect wallet");
+    }
+  };
 
   useEffect(() => {
     const initOnboard = () => {
@@ -63,30 +141,36 @@ const WalletTable = () => {
       });
       setOnboardInstance(onboard);
     };
-    fetchWallets();
     initOnboard();
   }, []);
 
-  const fetchWallets = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/wallets/getWallets', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setWalletData(data.data);
-      } else {
-        console.error('Failed to fetch wallets');
-      }
-    } catch (err) {
-      console.error(err);
-      setError(`${err}`);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    fetchAllWallets()
+  }, [])
+
+  useEffect(() => {
+    if (loading) return;
+    if (!allDBWallets.length || !onboardInstance) return;
+
+    // Get the current web3-onboard state
+    const { wallets } = onboardInstance.state.get();
+    if (!wallets.length) {
+      setWalletData([]);
+      return;
     }
-  };
+
+    // Get addresses of currently connected wallets from web3-onboard
+    const connectedAddresses = wallets.map((w: Web3OnboardWallet) => 
+      w.accounts[0].address.toLowerCase()
+    );
+
+    // Filter the DB wallets to show only those connected in the browser
+    const filteredWallets = allDBWallets.filter((dbWallet) =>
+      connectedAddresses.includes(dbWallet.address.toLowerCase())
+    );
+
+    setWalletData(filteredWallets);
+  }, [loading, allDBWallets, onboardInstance]);
 
   useEffect(() => {
     if(loading) return;
@@ -100,38 +184,54 @@ const WalletTable = () => {
 
   useEffect(() => {
     if (!onboardInstance) return;
-    // Subscribe to changes in the `wallets` state
+    
     const subscription = onboardInstance.state.select('wallets').subscribe((updatedWallets) => {
-      if (updatedWallets.length > 0) {
-        // Typically, we focus on the first wallet
-        const firstWallet = updatedWallets[0]
-        const { label, accounts, chains } = firstWallet
-
-        // If there's at least one account, get the address
-        const address = accounts.length > 0 ? accounts[0].address : null
-
-        // If there's at least one chain, get chain info
-        // Note: `chain.id` is often a hex string like '0x1' for Ethereum
-        const chainIdHex = chains.length > 0 ? chains[0].id : null
-        const chainId = chainIdHex ? parseInt(chainIdHex, 16) : null
-
-        console.log('Wallet label:', label)
-        console.log('Active address:', address)
-        console.log('Active chainId:', chainId)
-        
-        // If chain changes from 1 -> 56, you'll see that update here
-
-        // ... Do something whenever chain changes, e.g., re-fetch data, or update DB
-        if (chainId) {
-          // Possibly store chainId and address in state or call your backend
-          // updateChainInDatabase({ address, chainId, providerLabel: label })
-        }
+      // Handle wallet disconnections by updating walletData
+      if (updatedWallets.length === 0) {
+        setWalletData([]); // Clear all displayed wallets
+        setActiveWalletAddress(null);
+        setActiveChainId(null);
+        return;
       }
-    })
 
-    // Cleanup on unmount
-    return () => subscription.unsubscribe()
-  }, [onboardInstance])
+      // Get addresses of currently connected wallets
+      const connectedAddresses = updatedWallets.map(wallet => 
+        wallet.accounts[0].address.toLowerCase()
+      );
+
+      // Update displayed wallets to match connected ones
+      setWalletData(prev => 
+        prev.filter(wallet => 
+          connectedAddresses.includes(wallet.address.toLowerCase())
+        )
+      );
+
+      // Handle primary wallet and chain updates for the first wallet
+      const firstWallet = updatedWallets[0];
+      const { accounts, chains } = firstWallet;
+
+      const newAddress = accounts.length > 0 ? accounts[0].address : null;
+      const chainIdHex = chains.length > 0 ? chains[0].id : null;
+      const newChainId = chainIdHex ? parseInt(chainIdHex, 16) : null;
+
+      // Update primary wallet if it changed
+      if (newAddress !== activeWalletAddress) {
+        setActiveWalletAddress(newAddress);
+        setActiveChainId(newChainId);
+        setPrimaryWallet(newAddress);
+      } 
+      // Handle chain changes
+      else if (newChainId !== activeChainId) {
+        setActiveChainId(newChainId);
+        console.log(`Chain changed for wallet ${newAddress} to chain ${newChainId}`);
+      }
+
+      // Refresh wallet data from database if needed
+      debouncedFetchAllWallets();
+    });
+
+    return () => subscription.unsubscribe();
+  }, [onboardInstance, activeWalletAddress, activeChainId]);
 
   const handleWalletConnection = async () => {
     if (!onboardInstance) return;
@@ -168,42 +268,6 @@ const WalletTable = () => {
       toast.error("Failed to connect wallet. Please try again.");
     }
   };
-
-  const saveWalletToDatabase = async (walletList: { 
-    address: string; 
-    blockchain: string; 
-    provider: string;
-    providerImage?: string; 
-  }[]) => {
-    try {
-      const response = await fetch('/api/wallets/saveWallet', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ wallets: walletList }),
-      });
-      
-      if (!response.ok) {
-        // Add better error handling based on status codes
-        if (response.status === 409) {
-          toast.error("Wallet already exists");
-        } else if (response.status === 401) {
-          toast.error("Please login to connect wallets");
-        } else {
-          toast.error("Failed to save wallets");
-        }
-        return;
-      }
-      
-      toast.success("Wallets connected successfully");
-      fetchWallets();
-    } catch (error) {
-      console.error('Error saving wallets to database:', error);
-      toast.error("Failed to connect wallet");
-    }
-  };
-
 
   const [refreshTimes, setRefreshTimes] = useState<{ [key: string]: string }>(() => {
     const initialTimes: { [key: string]: string } = {};
@@ -289,47 +353,53 @@ const WalletTable = () => {
                     : "border-b border-stroke dark:border-dark-3"
                 }`}
               >
-                <div className="col-span-2 flex flex-col sm:flex-row items-center gap-3 px-2 py-4">
-                  <img
-                    src={wallet.providerImage || "/images/placeholder.svg"} // Use providerImage
-                    alt={wallet.provider}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <p className="font-medium text-dark dark:text-white">
-                    {wallet.provider}
-                  </p>
-                  <button
-                    className="ml-2 text-yellow-500 hover:scale-110 transition-transform"
-                    onClick={() => togglePrimaryWallet(wallet.address)}
-                  >
-                    {primaryWallet === wallet.address ? (
-                      <FaStar className="drop-shadow-md" />
-                    ) : (
-                      <FaRegStar />
-                    )}
-                  </button>
-                </div>
-                <div
-                  className="col-span-1 flex items-center justify-center px-2 py-4 cursor-pointer"
+                <div 
+                  className="col-span-6 grid sm:grid-cols-6 items-center cursor-pointer"
                   onClick={() => toggleDropdown(wallet.address)}
                 >
-                  <p className="font-medium text-green-500">{wallet.balance}</p>
-                  {expandedWallet === wallet.address ? (
-                    <FaChevronUp className="ml-2 text-dark dark:text-white" />
-                  ) : (
-                    <FaChevronDown className="ml-2 text-dark dark:text-white" />
-                  )}
+                  <div className="col-span-2 flex flex-col sm:flex-row items-center gap-3 px-2 py-4">
+                    <img
+                      src={wallet.providerImage || "/images/placeholder.svg"}
+                      alt={wallet.provider}
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <p className="font-medium text-dark dark:text-white">
+                      {wallet.provider}
+                    </p>
+                    <button
+                      className="ml-2 text-yellow-500 hover:scale-110 transition-transform"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row toggle when clicking star
+                        togglePrimaryWallet(wallet.address);
+                      }}
+                    >
+                      {primaryWallet === wallet.address ? (
+                        <FaStar className="drop-shadow-md" />
+                      ) : (
+                        <FaRegStar />
+                      )}
+                    </button>
+                  </div>
+                  <div className="col-span-1 flex items-center justify-center px-2 py-4">
+                    <p className="font-medium text-green-500">{wallet.balance}</p>
+                    {expandedWallet === wallet.address ? (
+                      <FaChevronUp className="ml-2 text-dark dark:text-white" />
+                    ) : (
+                      <FaChevronDown className="ml-2 text-dark dark:text-white" />
+                    )}
+                  </div>
+                  <div className="col-span-2 flex items-center justify-center px-2 py-4 text-center">
+                    <p className="text-sm text-dark dark:text-white">
+                      {new Date(wallet.updatedAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="col-span-1 flex items-center justify-center px-2 py-4 text-center">
+                    <p className="text-sm text-dark dark:text-white">
+                      {wallet.blockchain}
+                    </p>
+                  </div>
                 </div>
-                <div className="col-span-2 flex items-center justify-center px-2 py-4 text-center">
-                  <p className="text-sm text-dark dark:text-white">
-                    {new Date(wallet.updatedAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className="col-span-1 flex items-center justify-center px-2 py-4 text-center">
-                  <p className="text-sm text-dark dark:text-white">
-                    {wallet.blockchain}
-                  </p>
-                </div>
+
                 <div className="col-span-2 flex justify-end gap-3 px-2 py-4">
                   <button
                     onClick={() => setSwapModalOpen({ isOpen: true, wallet })}
