@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FaChevronDown, FaChevronUp, FaStar, FaRegStar } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaStar, FaRegStar, FaPen, FaTimes } from "react-icons/fa";
 import WalletDropdown from "./walletDropdown";
 import SwapModal from "./SwapModal";
 import TransferModal from "./TransferModal";
@@ -39,6 +39,8 @@ const WalletTable = () => {
   const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
   const [activeChainId, setActiveChainId] = useState<number | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
 
   // Define fetchAllWallets before using it in any hooks
   const fetchAllWallets = async () => {
@@ -178,7 +180,9 @@ const WalletTable = () => {
     const wallets = stateWallets.wallets
     if (wallets.length > 0){
     setPrimaryWallet(wallets[0].accounts[0].address)
-    console.log("primary wallet", wallets[0].accounts[0].address)}
+    console.log("primary wallet", wallets[0].accounts[0].address)
+    console.log(wallets[0].label)}
+
   }, [loading]);
 
 
@@ -294,6 +298,54 @@ const WalletTable = () => {
   };
   
 
+  // Add this function to handle wallet disconnections
+  const handleWalletDisconnect = async (addresses: string[]) => {
+    if (!onboardInstance) return;
+
+    try {
+      // Get current wallets from onboard
+      const { wallets } = onboardInstance.state.get();
+      
+      // Disconnect each selected wallet
+      for (const address of addresses) {
+        const walletToDisconnect = wallets.find(
+          w => w.accounts[0].address.toLowerCase() === address.toLowerCase()
+        );
+        
+        if (walletToDisconnect) {
+          await onboardInstance.disconnectWallet({ label: walletToDisconnect.label });
+        }
+      }
+
+      // Refresh the wallet list
+      debouncedFetchAllWallets();
+      toast.success("Wallets disconnected successfully");
+    } catch (error) {
+      console.error("Error disconnecting wallets:", error);
+      toast.error("Failed to disconnect wallets");
+    }
+  };
+
+  const toggleEdit = () => {
+    setIsEditing(!isEditing);
+    if (isEditing) {
+      setSelectedWallets([]);
+    }
+  };
+
+  const handleWalletSelection = (address: string) => {
+    setSelectedWallets(prev => 
+      prev.includes(address) 
+        ? prev.filter(a => a !== address)
+        : [...prev, address]
+    );
+  };
+
+  const formatBalance = (balance: string) => {
+    const num = parseFloat(balance);
+    return num.toFixed(4);
+  };
+
   return (
     <div className="rounded-[10px] bg-white px-5 pb-4 pt-5 shadow-1 dark:bg-gray-dark dark:shadow-card w-full">
       <div className="flex justify-between items-center mb-5">
@@ -303,8 +355,16 @@ const WalletTable = () => {
         <div className="flex items-center gap-2">
           <WalletDropdown
             wallets={walletData}
-            refreshWallets={{}}
+            refreshWallets={fetchAllWallets}
             connectWallet={handleWalletConnection}
+            onToggleEdit={toggleEdit}
+            isEditing={isEditing}
+            selectedCount={selectedWallets.length}
+            onCancelEdit={() => {
+              setIsEditing(false);
+              setSelectedWallets([]);
+            }}
+            onDisconnectSelected={() => handleWalletDisconnect(selectedWallets)}
           />
         </div>
       </div>
@@ -328,7 +388,12 @@ const WalletTable = () => {
       ) : (
         <div className="flex flex-col">
           <div className="hidden sm:grid grid-cols-8 text-center">
-            <div className="col-span-2 px-2 pb-3.5">
+            {isEditing && (
+              <div className="col-span-1 px-2 pb-3.5">
+                <h5 className="text-sm font-medium uppercase">Select</h5>
+              </div>
+            )}
+            <div className="col-span-1 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Source</h5>
             </div>
             <div className="col-span-1 px-2 pb-3.5">
@@ -340,7 +405,7 @@ const WalletTable = () => {
             <div className="col-span-1 px-2 pb-3.5">
               <h5 className="text-sm font-medium uppercase">Network</h5>
             </div>
-            <div className="col-span-2 px-2 pb-3.5">
+            <div className={`${isEditing ? 'col-span-2' : 'col-span-2'} px-2 pb-3.5`}>
               <h5 className="text-sm font-medium uppercase">Actions</h5>
             </div>
           </div>
@@ -352,12 +417,21 @@ const WalletTable = () => {
                     ? ""
                     : "border-b border-stroke dark:border-dark-3"
                 }`}
+                onClick={() => !isEditing && toggleDropdown(wallet.address)}
+                style={{ cursor: isEditing ? 'default' : 'pointer' }}
               >
-                <div 
-                  className="col-span-6 grid sm:grid-cols-6 items-center cursor-pointer"
-                  onClick={() => toggleDropdown(wallet.address)}
-                >
-                  <div className="col-span-2 flex flex-col sm:flex-row items-center gap-3 px-2 py-4">
+                {isEditing && (
+                  <div className="col-span-1 flex items-center justify-center px-2 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedWallets.includes(wallet.address)}
+                      onChange={() => handleWalletSelection(wallet.address)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                  </div>
+                )}
+                <div className="col-span-1 flex items-center justify-center px-2 py-4">
+                  <div className="flex items-center gap-2">
                     <img
                       src={wallet.providerImage || "/images/placeholder.svg"}
                       alt={wallet.provider}
@@ -366,52 +440,48 @@ const WalletTable = () => {
                     <p className="font-medium text-dark dark:text-white">
                       {wallet.provider}
                     </p>
-                    <button
-                      className="ml-2 text-yellow-500 hover:scale-110 transition-transform"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent row toggle when clicking star
-                        togglePrimaryWallet(wallet.address);
-                      }}
-                    >
-                      {primaryWallet === wallet.address ? (
-                        <FaStar className="drop-shadow-md" />
-                      ) : (
-                        <FaRegStar />
-                      )}
-                    </button>
                   </div>
-                  <div className="col-span-1 flex items-center justify-center px-2 py-4">
-                    <p className="font-medium text-green-500">{wallet.balance}</p>
-                    {expandedWallet === wallet.address ? (
+                </div>
+                <div className="col-span-1 flex items-center justify-center px-2 py-4">
+                  <p className="font-medium text-green-500">
+                    {formatBalance(wallet.balance)}
+                  </p>
+                  {!isEditing && (
+                    expandedWallet === wallet.address ? (
                       <FaChevronUp className="ml-2 text-dark dark:text-white" />
                     ) : (
                       <FaChevronDown className="ml-2 text-dark dark:text-white" />
-                    )}
-                  </div>
-                  <div className="col-span-2 flex items-center justify-center px-2 py-4 text-center">
-                    <p className="text-sm text-dark dark:text-white">
-                      {new Date(wallet.updatedAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="col-span-1 flex items-center justify-center px-2 py-4 text-center">
-                    <p className="text-sm text-dark dark:text-white">
-                      {wallet.blockchain}
-                    </p>
-                  </div>
+                    )
+                  )}
                 </div>
-
-                <div className="col-span-2 flex justify-end gap-3 px-2 py-4">
+                <div className="col-span-2 flex items-center justify-center px-2 py-4">
+                  <p className="text-sm text-dark dark:text-white">
+                    {new Date(wallet.updatedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className="col-span-1 flex items-center justify-center px-2 py-4">
+                  <p className="text-sm text-dark dark:text-white">
+                    {wallet.blockchain}
+                  </p>
+                </div>
+                <div className={`${isEditing ? 'col-span-2' : 'col-span-2'} flex justify-end gap-3 px-2 py-4`}>
                   <button
-                    onClick={() => setSwapModalOpen({ isOpen: true, wallet })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSwapModalOpen({ isOpen: true, wallet });
+                    }}
                     className="rounded-lg px-4 py-2 font-medium transition-all hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark hover:-translate-y-0.5"
                   >
                     Swap
                   </button>
                   <button
-                    onClick={() => setTransferModalOpen({ isOpen: true, wallet })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTransferModalOpen({ isOpen: true, wallet });
+                    }}
                     className="rounded-lg px-4 py-2 font-medium transition-all hover:shadow-md border border-gray-200 dark:border-gray-700 hover:border-primary hover:text-primary dark:hover:border-primary-light dark:hover:text-primary-light hover:-translate-y-0.5"
                   >
-                    Transfer
+                    Send
                   </button>
                 </div>
               </div>

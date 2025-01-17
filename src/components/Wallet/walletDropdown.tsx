@@ -1,23 +1,38 @@
 import { useState } from "react";
+import { FaPen, FaSync, FaFileExport, FaPlus } from "react-icons/fa";
 import ClickOutside from "@/components/ClickOutside";
+import { WalletData } from "@/types/Wallet";
 
-const WalletDropdown = ({ wallets, refreshWallets, connectWallet }) => {
+interface WalletDropdownProps {
+  wallets: WalletData[];
+  refreshWallets: () => void;
+  connectWallet: () => void;
+  onToggleEdit: () => void;
+  isEditing: boolean;
+  selectedCount: number;
+  onCancelEdit: () => void;
+  onDisconnectSelected: () => void;
+}
+
+const WalletDropdown = ({ 
+  wallets, 
+  refreshWallets, 
+  connectWallet,
+  onToggleEdit,
+  isEditing,
+  selectedCount,
+  onCancelEdit,
+  onDisconnectSelected
+}: WalletDropdownProps) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Export wallet data as CSV
   const handleExport = () => {
-    // Define CSV headers
     const csvHeader = "Source,Address,Blockchain,Balance,Last Refreshed,Network\n";
-    
-    // Map wallet data to CSV rows
     const csvRows = wallets.map((wallet) => {
       return `${wallet.provider},${wallet.address},${wallet.blockchain},${wallet.balance},${new Date(wallet.updatedAt).toLocaleString()},${wallet.blockchain}`;
     });
-
-    // Combine headers and rows
     const csvContent = csvHeader + csvRows.join("\n");
-
-    // Create and download the CSV file
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -25,25 +40,50 @@ const WalletDropdown = ({ wallets, refreshWallets, connectWallet }) => {
     link.download = "wallet_data.csv";
     link.click();
     window.URL.revokeObjectURL(url);
+    setDropdownOpen(false);
   };
 
-  // Refresh wallet data
-  const handleRefresh = () => {
-    refreshWallets(); // Refresh all wallets
-  };
-
-  // Add a wallet and reset the page
   const handleAddWallet = async () => {
-    await connectWallet(); // Trigger wallet connection logic
-    window.location.reload(); // Reset the page
+    await connectWallet();
+    setDropdownOpen(false);
+  };
+
+  const handleRefresh = () => {
+    refreshWallets();
+    setDropdownOpen(false);
+  };
+
+  const handleEdit = () => {
+    onToggleEdit();
+    setDropdownOpen(false);
   };
 
   return (
     <ClickOutside onClick={() => setDropdownOpen(false)}>
-      <div className="relative flex">
-        {/* Dropdown Toggle Button */}
+      <div className="relative flex items-center gap-2">
+        {/* Disconnect Button - Only visible when in edit mode and items selected */}
+        {isEditing && selectedCount > 0 && (
+          <button
+            onClick={onDisconnectSelected}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Disconnect ({selectedCount})
+          </button>
+        )}
+
+        {/* Cancel Button - Only visible when in edit mode */}
+        {isEditing && (
+          <button
+            onClick={onCancelEdit}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-dark-3 dark:text-gray-300 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+
+        {/* Main Dropdown Button */}
         <button
-          className="hover:text-primary"
+          className="hover:text-primary p-2 rounded-full hover:bg-gray-100 dark:hover:bg-dark-3"
           onClick={() => setDropdownOpen(!dropdownOpen)}
         >
           <svg
@@ -61,30 +101,47 @@ const WalletDropdown = ({ wallets, refreshWallets, connectWallet }) => {
 
         {/* Dropdown Menu */}
         {dropdownOpen && (
-          <div
-            className={`absolute right-0 top-full z-40 w-46.5 space-y-1.5 rounded-[7px] border border-stroke bg-white p-2 shadow-2 dark:border-dark-3 dark:bg-dark-2 dark:shadow-card`}
-          >
-            {/* Refresh Button */}
+          <div className="absolute right-0 top-full z-40 w-46.5 space-y-1.5 rounded-[7px] border border-stroke bg-white p-2 shadow-2 dark:border-dark-3 dark:bg-dark-2 dark:shadow-card">
             <button
               onClick={handleRefresh}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
             >
+              <FaSync className="mr-2" />
               Refresh
             </button>
 
-            {/* Export Button */}
             <button
               onClick={handleExport}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
             >
+              <FaFileExport className="mr-2" />
               Export
             </button>
 
-            {/* Add Wallet Button */}
+            {wallets.length > 0 && (
+              <button
+                onClick={handleEdit}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
+              >
+                {isEditing ? (
+                  <>
+                    <FaPen className="mr-2" />
+                    Exit Edit Mode
+                  </>
+                ) : (
+                  <>
+                    <FaPen className="mr-2" />
+                    Edit
+                  </>
+                )}
+              </button>
+            )}
+
             <button
               onClick={handleAddWallet}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-[9px] text-left font-medium text-dark-4 hover:bg-gray-2 hover:text-dark dark:text-dark-6 dark:hover:bg-dark-3 dark:hover:text-white"
             >
+              <FaPlus className="mr-2" />
               Add a Wallet
             </button>
           </div>

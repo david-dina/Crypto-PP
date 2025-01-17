@@ -58,6 +58,7 @@ export async function POST(req: Request) {
           console.error("No tokens config for chainKey:", chainKey);
           return;
         }
+        console.log("Using RPC provider:", chainConfig.rpcUrl);
         const RPCprovider = new JsonRpcProvider(chainConfig.rpcUrl);
         const balanceBig = await RPCprovider.getBalance(address);
         const balance: number = parseFloat(formatEther(balanceBig));
