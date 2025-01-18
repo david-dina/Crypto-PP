@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FaChevronDown, FaChevronUp, FaStar, FaRegStar, FaPen, FaTimes } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp,} from "react-icons/fa";
 import WalletDropdown from "./walletDropdown";
 import SwapModal from "./SwapModal";
 import TransferModal from "./TransferModal";
@@ -10,7 +10,6 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { requireSupportedChain } from "@/libs/chainConfig";
 import { WalletData, Web3OnboardWallet } from "@/types/Wallet";
-import { Widget, WidgetConfig } from "@rango-dev/widget-embedded";
 
 declare global {
   interface Window {
@@ -28,9 +27,12 @@ const WalletTable = () => {
   const [primaryWallet, setPrimaryWallet] = useState<string | null>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSwapModalOpen, setSwapModalOpen] = useState({
+  const [isSwapModalOpen, setSwapModalOpen] = useState<{
+    isOpen: boolean;
+    wallet: WalletData | null;
+  }>({
     isOpen: false,
-    wallet: null,
+    wallet: null
   });
   const [isTransferModalOpen, setTransferModalOpen] = useState({
     isOpen: false,
@@ -162,15 +164,31 @@ const WalletTable = () => {
       return;
     }
 
-    // Get addresses of currently connected wallets from web3-onboard
-    const connectedAddresses = wallets.map((w: Web3OnboardWallet) => 
-      w.accounts[0].address.toLowerCase()
-    );
+    // Get connected wallets with their current chain IDs
+    const connectedWalletsWithChains = wallets.map((w: Web3OnboardWallet) => ({
+      address: w.accounts[0].address.toLowerCase(),
+      chainId: parseInt(w.chains[0].id, 16)
+    }));
 
-    // Filter the DB wallets to show only those connected in the browser
-    const filteredWallets = allDBWallets.filter((dbWallet) =>
-      connectedAddresses.includes(dbWallet.address.toLowerCase())
-    );
+    // Filter DB wallets to show only those connected in the browser
+    // and match them with the correct chain
+    const filteredWallets = allDBWallets.filter((dbWallet) => {
+      const connectedWallet = connectedWalletsWithChains.find(
+        w => w.address === dbWallet.address.toLowerCase()
+      );
+      
+      if (!connectedWallet) return false;
+
+      // Match the blockchain name with the chain ID
+      const chainMatches = (chainId: number) => {
+        if (chainId === 1 && dbWallet.blockchain.toLowerCase() === 'ethereum') return true;
+        if (chainId === 11155111 && dbWallet.blockchain.toLowerCase() === 'sepolia') return true;
+        // Add more chain mappings as needed
+        return false;
+      };
+
+      return chainMatches(connectedWallet.chainId);
+    });
 
     setWalletData(filteredWallets);
   }, [loading, allDBWallets, onboardInstance]);
@@ -191,52 +209,56 @@ const WalletTable = () => {
     if (!onboardInstance) return;
     
     const subscription = onboardInstance.state.select('wallets').subscribe((updatedWallets) => {
-      // Handle wallet disconnections by updating walletData
+      // Handle wallet disconnections
       if (updatedWallets.length === 0) {
-        setWalletData([]); // Clear all displayed wallets
+        setWalletData([]);
         setActiveWalletAddress(null);
         setActiveChainId(null);
         return;
       }
 
-      // Get addresses of currently connected wallets
-      const connectedAddresses = updatedWallets.map(wallet => 
-        wallet.accounts[0].address.toLowerCase()
-      );
+      // Get addresses and chains of currently connected wallets
+      const connectedWalletsWithChains = updatedWallets.map(wallet => ({
+        address: wallet.accounts[0].address.toLowerCase(),
+        chainId: parseInt(wallet.chains[0].id, 16)
+      }));
 
-      // Update displayed wallets to match connected ones
+      // Update displayed wallets to match connected ones and their chains
       setWalletData(prev => 
-        prev.filter(wallet => 
-          connectedAddresses.includes(wallet.address.toLowerCase())
-        )
+        prev.filter(wallet => {
+          const connectedWallet = connectedWalletsWithChains.find(
+            w => w.address === wallet.address.toLowerCase()
+          );
+          if (!connectedWallet) return false;
+
+          // Match the blockchain name with the chain ID
+          const chainMatches = (chainId: number) => {
+            if (chainId === 1 && wallet.blockchain.toLowerCase() === 'ethereum') return true;
+            if (chainId === 11155111 && wallet.blockchain.toLowerCase() === 'sepolia') return true;
+            return false;
+          };
+
+          return chainMatches(connectedWallet.chainId);
+        })
       );
 
-      // Handle primary wallet and chain updates for the first wallet
+      // Handle primary wallet and chain updates
       const firstWallet = updatedWallets[0];
-      const { accounts, chains } = firstWallet;
+      if (firstWallet) {
+        const newAddress = firstWallet.accounts[0].address;
+        const newChainId = parseInt(firstWallet.chains[0].id, 16);
 
-      const newAddress = accounts.length > 0 ? accounts[0].address : null;
-      const chainIdHex = chains.length > 0 ? chains[0].id : null;
-      const newChainId = chainIdHex ? parseInt(chainIdHex, 16) : null;
-
-      // Update primary wallet if it changed
-      if (newAddress !== activeWalletAddress) {
         setActiveWalletAddress(newAddress);
         setActiveChainId(newChainId);
         setPrimaryWallet(newAddress);
-      } 
-      // Handle chain changes
-      else if (newChainId !== activeChainId) {
-        setActiveChainId(newChainId);
-        console.log(`Chain changed for wallet ${newAddress} to chain ${newChainId}`);
       }
 
-      // Refresh wallet data from database if needed
+      // Refresh wallet data from database
       debouncedFetchAllWallets();
     });
 
     return () => subscription.unsubscribe();
-  }, [onboardInstance, activeWalletAddress, activeChainId]);
+  }, [onboardInstance]);
 
   const handleWalletConnection = async () => {
     if (!onboardInstance) return;
@@ -345,6 +367,13 @@ const WalletTable = () => {
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
     return num.toFixed(4);
+  };
+
+  const handleSwapClick = (wallet: WalletData) => {
+    setSwapModalOpen({
+      isOpen: true,
+      wallet: wallet
+    });
   };
 
   return (
@@ -469,7 +498,7 @@ const WalletTable = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSwapModalOpen({ isOpen: true, wallet });
+                      handleSwapClick(wallet);
                     }}
                     className="rounded-lg px-4 py-2 font-medium transition-all hover:shadow-md bg-primary text-white hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary-dark hover:-translate-y-0.5"
                   >
@@ -542,7 +571,6 @@ const WalletTable = () => {
         isOpen={isSwapModalOpen.isOpen}
         onClose={() => setSwapModalOpen({ isOpen: false, wallet: null })}
         wallet={isSwapModalOpen.wallet}
-        onboardInstance={onboardInstance}
       />
       <TransferModal
         isOpen={isTransferModalOpen.isOpen}

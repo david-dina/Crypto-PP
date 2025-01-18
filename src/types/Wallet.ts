@@ -21,6 +21,8 @@ export interface Web3OnboardWallet {
   provider: any; // You can make this more specific based on your needs
 }
 
+import type { EIP1193Provider } from '@web3-onboard/core';
+
 export interface WalletData {
   id: string;
   address: string;

@@ -142,16 +142,14 @@ model TierGroup {
 
 model Subscription {
   id           String        @id @unique @default(cuid())
-  name         String        // Add a name field for display purposes
-  userId       String
-  companyId    String
+  userId       String?
+  companyId    String?
   planId       String
   billingCycle String
-  coinType     String
-  coinAmount   Float
+  coinType     String[]
   startDate    DateTime
   renewalDate  DateTime
-  status       String
+  status SubscriptionStatus @default(ACTIVE)
   tierGroupId  String?
   createdAt    DateTime      @default(now())
 
@@ -168,3 +166,11 @@ enum UserRole {
   BUSINESS
   ADMIN
 }
+enum SubscriptionStatus {
+  ACTIVE    // The subscription is active and renewing as expected.
+  PENDING   // The subscription is being processed or awaiting confirmation.
+  CANCELED  // The subscription has been canceled and will not renew.
+  EXPIRED   // Optional: The subscription has ended due to non-renewal or expiration.
+  PAUSED    // Optional: The subscription is temporarily paused but not canceled.
+}
+

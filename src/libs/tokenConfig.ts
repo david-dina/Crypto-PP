@@ -8,8 +8,12 @@ export interface Token {
     name: string;
     decimals: number;
     address: string; // The contract address on this chain
-    // Optional fields (logo, coingeckoId, isStablecoin, etc.) can be added
-  }
+    logoUrl?: string;
+    coingeckoId?: string;
+    type?: 'native' | 'erc20';
+    isStablecoin?: boolean;
+    explorerUrl?: string;
+}
   
   // Each chain config object holds the numeric chainId, a display chainName, and a list of tokens
   export interface ChainTokenConfig {
@@ -25,22 +29,36 @@ export interface Token {
       chainName: "Ethereum",
       tokens: [
         {
+          symbol: "ETH",
+          name: "Ethereum",
+          decimals: 18,
+          address: "0x0000000000000000000000000000000000000000",
+          type: "native",
+          isStablecoin: false
+        },
+        {
           symbol: "USDC",
           name: "USD Coin",
           decimals: 6,
-          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "USDT",
           name: "Tether USD",
           decimals: 6,
-          address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+          address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "WETH",
           name: "Wrapped Ether",
           decimals: 18,
-          address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+          address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+          type: "erc20",
+          isStablecoin: false
         }
         // ... more Ethereum tokens
       ]
@@ -50,22 +68,36 @@ export interface Token {
       chainName: "Binance Smart Chain",
       tokens: [
         {
+          symbol: "BNB",
+          name: "Binance Coin",
+          decimals: 18,
+          address: "0x0000000000000000000000000000000000000000",
+          type: "native",
+          isStablecoin: false
+        },
+        {
           symbol: "USDC",
           name: "USD Coin",
           decimals: 18,
-          address: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
+          address: "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "USDT",
           name: "Tether USD",
           decimals: 18,
-          address: "0x55d398326f99059ff775485246999027b3197955"
+          address: "0x55d398326f99059ff775485246999027b3197955",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "WBNB",
           name: "Wrapped BNB",
           decimals: 18,
-          address: "0xBB4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
+          address: "0xBB4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+          type: "erc20",
+          isStablecoin: false
         }
         // ... more BSC tokens
       ]
@@ -75,22 +107,36 @@ export interface Token {
       chainName: "Polygon",
       tokens: [
         {
+          symbol: "MATIC",
+          name: "Polygon",
+          decimals: 18,
+          address: "0x0000000000000000000000000000000000000000",
+          type: "native",
+          isStablecoin: false
+        },
+        {
           symbol: "USDC",
           name: "USD Coin",
           decimals: 6,
-          address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+          address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "USDT",
           name: "Tether USD",
           decimals: 6,
-          address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+          address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+          type: "erc20",
+          isStablecoin: true
         },
         {
           symbol: "WMATIC",
           name: "Wrapped MATIC",
           decimals: 18,
-          address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0"
+          address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
+          type: "erc20",
+          isStablecoin: false
         }
         // ... more Polygon tokens
       ]
@@ -98,7 +144,16 @@ export interface Token {
     sepolia: {
       chainId: 11155111,
       chainName: "Sepolia",
-      tokens: []
+      tokens: [
+        {
+          symbol: "ETH",
+          name: "Sepolia Ether",
+          decimals: 18,
+          address: "0x0000000000000000000000000000000000000000",
+          type: "native",
+          isStablecoin: false
+        }
+      ]
     }
   };
   
@@ -187,9 +242,35 @@ export interface Token {
     return tokens.find((t) => t.symbol.toLowerCase() === symbol.toLowerCase());
   }
   
-
-
-export function chainNameToKey(chainName: string): string {
+  /**
+   * Returns all supported chain configurations
+   */
+  export function getAllChains(): ChainTokenConfig[] {
+    return Object.values(SUPPORTED_TOKENS);
+  }
+  
+  /**
+   * Checks if a token is supported on a specific chain
+   */
+  export function isTokenSupported(chainId: number, tokenAddress: string): boolean {
+    return !!getTokenByAddressOnChainId(chainId, tokenAddress);
+  }
+  
+  /**
+   * Returns only stablecoin tokens for a given chain
+   */
+  export function getStablecoins(chainId: number): Token[] {
+    return getTokensByChainId(chainId).filter((token) => token.isStablecoin);
+  }
+  
+  /**
+   * Returns the native token (ETH, MATIC, etc.) for a given chain
+   */
+  export function getNativeTokenForChain(chainId: number): Token | undefined {
+    return getTokensByChainId(chainId).find((token) => token.type === 'native');
+  }
+  
+  export function chainNameToKey(chainName: string): string {
     switch (chainName) {
       case "Ethereum":
         return "ethereum";
@@ -202,4 +283,51 @@ export function chainNameToKey(chainName: string): string {
       default:
         throw new Error(`Unsupported chain name: ${chainName}`);
     }
-}
+  }
+  
+  /**
+   * Returns all tokens (both native and non-native) for a given chain
+   */
+  export function getAllTokensForChain(chainId: number): Token[] {
+    return getTokensByChainId(chainId);
+  }
+  
+  /**
+   * Returns only non-native (ERC20) tokens for a given chain
+   */
+  export function getNonNativeTokensForChain(chainId: number): Token[] {
+    return getTokensByChainId(chainId).filter((token) => token.type === 'erc20');
+  }
+  
+  /**
+   * Converts various chain name formats to our supported chain keys
+   * Handles common variations in chain names from different sources
+   */
+  export function normalizeChainNameToKey(chainName: string): string {
+    const normalized = chainName.trim().toLowerCase();
+    
+    switch (normalized) {
+        case 'ethereum':
+        case 'eth':
+        case 'mainnet':
+            return 'ethereum';
+            
+        case 'binance smart chain':
+        case 'bsc':
+        case 'bnb chain':
+        case 'binance':
+            return 'bsc';
+            
+        case 'polygon':
+        case 'matic':
+        case 'polygon mainnet':
+            return 'polygon';
+            
+        case 'sepolia':
+        case 'sepolia testnet':
+            return 'sepolia';
+            
+        default:
+            throw new Error(`Unsupported chain name: ${chainName}`);
+    }
+  }
