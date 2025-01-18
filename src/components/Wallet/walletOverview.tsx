@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { requireSupportedChain } from "@/libs/chainConfig";
 import { WalletData, Web3OnboardWallet } from "@/types/Wallet";
+import { Widget, WidgetConfig } from "@rango-dev/widget-embedded";
 
 declare global {
   interface Window {
@@ -541,6 +542,7 @@ const WalletTable = () => {
         isOpen={isSwapModalOpen.isOpen}
         onClose={() => setSwapModalOpen({ isOpen: false, wallet: null })}
         wallet={isSwapModalOpen.wallet}
+        onboardInstance={onboardInstance}
       />
       <TransferModal
         isOpen={isTransferModalOpen.isOpen}
