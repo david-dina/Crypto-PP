@@ -43,31 +43,32 @@ model User {
 }
 
 model Wallet {
-  id          String   @id @unique @default(cuid())
-  address     String
-  blockchain  String
-  balance     Float    @default(0.0)
-  provider    String
+  id            String         @id @unique @default(cuid())
+  address       String
+  blockchain    String
+  balance       Float          @default(0.0)
+  provider      String
   providerImage String?
-  userId      String?
-  companyId   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  userId        String?
+  companyId     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   tokenBalances TokenBalance[]
-  User        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  Company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  User          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Company       Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@unique([address,provider, blockchain]) // Ensure provider and address are unique together
+  @@unique([address, provider, blockchain]) // Ensure provider and address are unique together
 }
 
 model TokenBalance {
-  id         String   @id @default(cuid())
-  walletId   String
-  tokenName  String   // Token name/symbol (e.g., "USDC")
-  balance    Float    // Token balance (e.g., 100.0)
-  symbol     String  
-  wallet     Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  @@unique([walletId,tokenName])
+  id        String @id @default(cuid())
+  walletId  String
+  tokenName String // Token name/symbol (e.g., "USDC")
+  balance   Float // Token balance (e.g., 100.0)
+  symbol    String
+  wallet    Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, tokenName])
 }
 
 model ActivityLog {
@@ -79,24 +80,23 @@ model ActivityLog {
 }
 
 model Company {
-  id              String         @id @unique @default(cuid())
-  name            String         // Editable Business Name
-  category        String
-  currency        String         @default("USD") // Default Fiat Currency
-  acceptedCoins   String[]       // Accepted Cryptocurrencies (e.g., BTC, ETH)
-  restrictedRegions String[]     @default([]) // Restricted Sales Regions
-  withdrawalWallet String?       // Default Wallet Address for Withdrawals
-  primaryWalletId String?        @unique
-  enableTax       Boolean        @default(true) // Tax toggle switch
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  ownerId         String
-  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  plans           Plan[]
-  subscriptions   Subscription[]
-  Wallet          Wallet[]
+  id                String         @id @unique @default(cuid())
+  name              String // Editable Business Name
+  category          String
+  currency          String         @default("USD") // Default Fiat Currency
+  acceptedCoins     String[] // Accepted Cryptocurrencies (e.g., BTC, ETH)
+  restrictedRegions String[]       @default([]) // Restricted Sales Regions
+  withdrawalWallet  String? // Default Wallet Address for Withdrawals
+  primaryWalletId   String?        @unique
+  enableTax         Boolean        @default(true) // Tax toggle switch
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  ownerId           String
+  owner             User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  plans             Plan[]
+  subscriptions     Subscription[]
+  Wallet            Wallet[]
 }
-
 
 model Transaction {
   id             String        @id @unique @default(cuid())
@@ -111,37 +111,39 @@ model Transaction {
   user           User          @relation(fields: [userId], references: [id])
 
   // New Tax Fields
-  taxRate        Float?        // Applied tax rate
-  taxAmount      Float?        // Tax amount calculated
-  jurisdiction   String?       // Jurisdiction for tax tracking
-  netAmount      Float?        // Net amount after tax deductions
+  taxRate      Float? // Applied tax rate
+  taxAmount    Float? // Tax amount calculated
+  jurisdiction String? // Jurisdiction for tax tracking
+  netAmount    Float? // Net amount after tax deductions
 }
-
 
 model Plan {
   id            String         @id @unique @default(cuid())
   companyId     String
   name          String
-  price         Float
-  billingCycles String[]
-  isTiered      Boolean        @default(false)
-  tierGroupId   String?
-  position      Int?
+  description   String?
+  acceptedCoins String[]
+  billingCycles BillingCycle[]
   features      Json?
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   subscriptions Subscription[]
-  TierGroup     TierGroup?     @relation(fields: [tierGroupId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  status        PlanStatus     @default(PRIVATE)
 }
 
-model TierGroup {
-  id       String @id @unique @default(cuid())
-  name     String
-  features Json
-  plans    Plan[]
+model BillingCycle {
+  id       String   @id @default(cuid())
+  planId   String
+  cycle    Cycle
+  price    Float
+  plan     Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, cycle])
 }
 
 model Subscription {
-  id           String        @id @unique @default(cuid())
+  id           String             @id @unique @default(cuid())
   userId       String?
   companyId    String?
   planId       String
@@ -149,28 +151,40 @@ model Subscription {
   coinType     String[]
   startDate    DateTime
   renewalDate  DateTime
-  status SubscriptionStatus @default(ACTIVE)
-  tierGroupId  String?
-  createdAt    DateTime      @default(now())
+  status       SubscriptionStatus @default(ACTIVE)
+  createdAt    DateTime           @default(now())
 
   // Relations
-  company      Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   plan         Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
-  user         User?          @relation(fields: [userId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
   transactions Transaction[]
 }
-
 
 enum UserRole {
   USER
   BUSINESS
   ADMIN
 }
-enum SubscriptionStatus {
-  ACTIVE    // The subscription is active and renewing as expected.
-  PENDING   // The subscription is being processed or awaiting confirmation.
-  CANCELED  // The subscription has been canceled and will not renew.
-  EXPIRED   // Optional: The subscription has ended due to non-renewal or expiration.
-  PAUSED    // Optional: The subscription is temporarily paused but not canceled.
+
+enum Cycle {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
 
+enum SubscriptionStatus {
+  ACTIVE // The subscription is active and renewing as expected.
+  PENDING // The subscription is being processed or awaiting confirmation.
+  CANCELED // The subscription has been canceled and will not renew.
+  EXPIRED // Optional: The subscription has ended due to non-renewal or expiration.
+  PAUSED // Optional: The subscription is temporarily paused but not canceled.
+}
+
+enum PlanStatus {
+  ACTIVE    // Plan is published and visible to users
+  PRIVATE   // Plan is created but hidden from public view
+  ARCHIVED  // Plan is no longer in use but kept for record
+  DISABLED  // Plan is temporarily disabled
+}

@@ -1,151 +1,185 @@
 "use client";
 
 import React, { useState } from "react";
-import PlansModify from "@/components/Plans/PlansModify";
-import PlansCancel from "@/components/Plans/PlansCancel";
 import { Plan } from "@/types/Plan";
+import PlansFilter from "./PlansFilter";
+import PlanEditModal from "./PlanEditModal";
+import { PAGINATION_CONFIG } from "@/config/constants";
+import { Cycle, PlanStatus } from "@prisma/client";
+import toast from 'react-hot-toast';
+import {Token} from 'tokenconfigs'
 
 interface PlanTableProps {
   data: Plan[];
+  onPlanUpdate?: (updatedPlan: Plan) => Promise<void>;
+  availableCoins?: Token[];
 }
 
-const PlanTable = ({ data }: PlanTableProps) => {
-  const [plans] = useState<Plan[]>(data);
+const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
+
+const PlanTable = ({ 
+  data, 
+  onPlanUpdate = async () => {
+    console.warn('No onPlanUpdate handler provided');
+    toast.error('Plan update not implemented');
+  },
+  availableCoins = []
+}: PlanTableProps) => {
+  const [currentFilter, setCurrentFilter] = useState<{
+    cycles?: Cycle[];
+    status?: PlanStatus;
+  }>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+
+  // Filtering logic
+  const filteredPlans = data.filter(plan => {
+    // Status filter
+    if (currentFilter.status && plan.status !== currentFilter.status) {
+      return false;
+    }
+
+    // Cycle filter
+    if (currentFilter.cycles && currentFilter.cycles.length > 0) {
+      const matchesCycle = currentFilter.cycles.every(filterCycle => 
+        plan.billingCycles.includes(filterCycle)
+      );
+      if (!matchesCycle) {
+        return false;
+      }
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      if (!plan.name.toLowerCase().includes(lowerQuery)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Pagination
+  const paginatedPlans = filteredPlans.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE, 
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const totalPages = Math.ceil(filteredPlans.length / ITEMS_PER_PAGE);
+
+  const handleEditPlan = (plan: Plan) => {
+    setSelectedPlan(plan);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedPlan(null);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   return (
-    <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
+    <div>
+      <PlansFilter 
+        onFilterChange={(filter) => {
+          setCurrentFilter(filter);
+          setCurrentPage(1);
+        }}
+        onSearch={(query) => {
+          setSearchQuery(query);
+          setCurrentPage(1);
+        }}
+      />
+      
       <div className="max-w-full overflow-x-auto">
         <table className="w-full table-auto">
           <thead>
-            <tr className="bg-gray-2 text-left dark:bg-meta-4">
-              <th className="min-w-[220px] py-4 px-4 font-medium text-black dark:text-white xl:pl-11">
-                Name
-              </th>
-              <th className="min-w-[150px] py-4 px-4 font-medium text-black dark:text-white">
-                Price
-              </th>
-              <th className="min-w-[120px] py-4 px-4 font-medium text-black dark:text-white">
-                Billing Cycles
-              </th>
-              <th className="min-w-[120px] py-4 px-4 font-medium text-black dark:text-white">
-                Type
-              </th>
-              <th className="py-4 px-4 font-medium text-black dark:text-white">
-                Features
-              </th>
-              <th className="py-4 px-4 font-medium text-black dark:text-white">
-                Actions
-              </th>
+            <tr className="border-b border-[#1C1C24]">
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Plan ID</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Name</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Billing Cycles</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Status</th>
+              <th className="py-4 px-4 text-right text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {plans.map((plan, key) => (
-              <tr key={plan.id}>
-                <td className="border-b border-[#eee] py-5 px-4 pl-9 dark:border-strokedark xl:pl-11">
-                  <h5 className="font-medium text-black dark:text-white">
+            {paginatedPlans.map((plan) => (
+              <tr key={plan.id} className="border-t border-[#1C1C24]">
+                <td className="py-4 px-4 w-1/4">
+                  <span 
+                    className="text-sm text-gray-900 dark:text-white"
+                    title={plan.id}
+                  >
+                    {plan.id.slice(0, 4)}...{plan.id.slice(-4)}
+                  </span>
+                </td>
+                <td className="py-4 px-4 w-1/4">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {plan.name}
-                  </h5>
+                  </span>
                 </td>
-                <td className="border-b border-[#eee] py-5 px-4 dark:border-strokedark">
-                  <p className="text-black dark:text-white">
-                    ${plan.price.toFixed(2)}
-                  </p>
-                </td>
-                <td className="border-b border-[#eee] py-5 px-4 dark:border-strokedark">
+                <td className="py-4 px-4 w-1/4">
                   <div className="flex flex-wrap gap-2">
                     {plan.billingCycles.map((cycle, index) => (
-                      <span
+                      <span 
                         key={index}
-                        className="inline-flex rounded-full bg-success bg-opacity-10 py-1 px-3 text-sm font-medium text-success"
+                        className="text-sm text-gray-900 dark:text-white"
                       >
                         {cycle}
                       </span>
                     ))}
                   </div>
                 </td>
-                <td className="border-b border-[#eee] py-5 px-4 dark:border-strokedark">
-                  <p className="text-black dark:text-white">
-                    {plan.isTiered ? 'Tiered' : 'Standard'}
-                  </p>
+                <td className="py-4 px-4 w-1/4">
+                  <span 
+                    className={`text-sm ${
+                      plan.status === 'ACTIVE' ? 'text-green-700 dark:text-green-400' :
+                      plan.status === 'PRIVATE' ? 'text-gray-700 dark:text-gray-300' :
+                      plan.status === 'ARCHIVED' ? 'text-yellow-700 dark:text-yellow-400' :
+                      'text-red-700 dark:text-red-400'
+                    }`}
+                  >
+                    {plan.status}
+                  </span>
                 </td>
-                <td className="border-b border-[#eee] py-5 px-4 dark:border-strokedark">
-                  {plan.features ? (
-                    <div className="flex flex-col gap-1">
-                      {Object.entries(plan.features).map(([key, value], index) => (
-                        <span key={index} className="text-sm">
-                          {key}: {String(value)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">No features specified</span>
-                  )}
-                </td>
-                <td className="border-b border-[#eee] py-5 px-4 dark:border-strokedark">
-                  <div className="flex items-center space-x-3.5">
-                    <button className="hover:text-primary">
-                      <svg
-                        className="fill-current"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 18 18"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+                <td className="py-4 px-4 w-1/4">
+                  <div className="flex items-center justify-end gap-3">
+                    <button 
+                      onClick={() => handleEditPlan(plan)}
+                      className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                    >
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        strokeWidth={1.5} 
+                        stroke="currentColor" 
+                        className="w-5 h-5"
                       >
-                        <path
-                          d="M8.99981 14.8219C3.43106 14.8219 0.674805 9.50624 0.562305 9.28124C0.47793 9.11249 0.47793 8.88749 0.562305 8.71874C0.674805 8.49374 3.43106 3.17812 8.99981 3.17812C14.5686 3.17812 17.3248 8.49374 17.4373 8.71874C17.5217 8.88749 17.5217 9.11249 17.4373 9.28124C17.3248 9.50624 14.5686 14.8219 8.99981 14.8219ZM1.85605 8.99999C2.4748 10.0406 4.89356 13.5562 8.99981 13.5562C13.1061 13.5562 15.5248 10.0406 16.1436 8.99999C15.5248 7.95936 13.1061 4.44374 8.99981 4.44374C4.89356 4.44374 2.4748 7.95936 1.85605 8.99999Z"
-                          fill=""
-                        />
-                        <path
-                          d="M9 11.3906C7.67812 11.3906 6.60938 10.3219 6.60938 9C6.60938 7.67813 7.67812 6.60938 9 6.60938C10.3219 6.60938 11.3906 7.67813 11.3906 9C11.3906 10.3219 10.3219 11.3906 9 11.3906ZM9 7.875C8.38125 7.875 7.875 8.38125 7.875 9C7.875 9.61875 8.38125 10.125 9 10.125C9.61875 10.125 10.125 9.61875 10.125 9C10.125 8.38125 9.61875 7.875 9 7.875Z"
-                          fill=""
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" 
                         />
                       </svg>
                     </button>
-                    <button className="hover:text-primary">
-                      <svg
-                        className="fill-current"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 18 18"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M13.7535 2.47502H11.5879V1.9969C11.5879 1.15315 10.9129 0.478149 10.0691 0.478149H7.90352C7.05977 0.478149 6.38477 1.15315 6.38477 1.9969V2.47502H4.21914C3.40352 2.47502 2.72852 3.15002 2.72852 3.96565V4.8094C2.72852 5.42815 3.09414 5.9344 3.62852 6.1594L4.07852 15.4688C4.13477 16.6219 5.09102 17.5219 6.24414 17.5219H11.7004C12.8535 17.5219 13.8098 16.6219 13.866 15.4688L14.3441 6.13127C14.8785 5.90627 15.2441 5.3719 15.2441 4.78127V3.93752C15.2441 3.15002 14.5691 2.47502 13.7535 2.47502ZM7.67852 1.9969C7.67852 1.85627 7.79102 1.74377 7.93164 1.74377H10.0973C10.2379 1.74377 10.3504 1.85627 10.3504 1.9969V2.47502H7.70664V1.9969H7.67852ZM4.02227 3.96565C4.02227 3.85315 4.10664 3.74065 4.24727 3.74065H13.7535C13.866 3.74065 13.9785 3.82502 13.9785 3.96565V4.8094C13.9785 4.9219 13.8941 5.0344 13.7535 5.0344H4.24727C4.13477 5.0344 4.02227 4.95002 4.02227 4.8094V3.96565ZM11.7285 16.2563H6.27227C5.79414 16.2563 5.40039 15.8906 5.37227 15.3844L4.95039 6.2719H13.0785L12.6566 15.3844C12.6004 15.8625 12.2066 16.2563 11.7285 16.2563Z"
-                          fill=""
-                        />
-                        <path
-                          d="M9.00039 9.11255C8.66289 9.11255 8.35352 9.3938 8.35352 9.75942V13.3313C8.35352 13.6688 8.63477 13.9782 9.00039 13.9782C9.33789 13.9782 9.64727 13.6969 9.64727 13.3313V9.75942C9.64727 9.3938 9.33789 9.11255 9.00039 9.11255Z"
-                          fill=""
-                        />
-                        <path
-                          d="M11.2502 9.67504C10.9127 9.64692 10.6033 9.90004 10.5752 10.2375L10.4064 12.6094C10.3783 12.9469 10.6314 13.2563 10.9689 13.2563C11.0252 13.2563 11.0533 13.2563 11.0814 13.2563C11.4189 13.2281 11.6721 12.8906 11.6721 12.5531L11.8408 10.1813C11.8408 9.84379 11.5877 9.70317 11.2502 9.67504Z"
-                          fill=""
-                        />
-                        <path
-                          d="M6.72245 9.67504C6.38495 9.70317 6.1037 10.0125 6.13182 10.35L6.3287 12.7219C6.35683 13.0594 6.63808 13.3125 6.94745 13.3125C6.97558 13.3125 6.97558 13.3125 7.0037 13.3125C7.3412 13.2844 7.62245 12.975 7.59433 12.6375L7.39745 10.2656C7.39745 9.90004 7.08808 9.67504 6.72245 9.67504Z"
-                          fill=""
-                        />
+                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                     </button>
-                    <button className="hover:text-primary">
-                      <svg
-                        className="fill-current"
-                        width="18"
-                        height="18"
-                        viewBox="0 0 18 18"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          d="M16.8754 11.6719C16.5379 11.6719 16.2285 11.9531 16.2285 12.3187V14.8219C16.2285 15.075 16.0316 15.2719 15.7785 15.2719H2.22227C1.96914 15.2719 1.77227 15.075 1.77227 14.8219V12.3187C1.77227 11.9812 1.49102 11.6719 1.12539 11.6719C0.759766 11.6719 0.478516 11.9531 0.478516 12.3187V14.8219C0.478516 15.7781 1.23789 16.5375 2.19414 16.5375H15.7785C16.7348 16.5375 17.4941 15.7781 17.4941 14.8219V12.3187C17.5223 11.9531 17.2129 11.6719 16.8754 11.6719Z"
-                          fill=""
-                        />
-                        <path
-                          d="M8.55074 12.3469C8.66324 12.4594 8.83199 12.5156 9.00074 12.5156C9.16949 12.5156 9.33824 12.4594 9.45074 12.3469L13.4726 8.43752C13.7257 8.1844 13.7257 7.79065 13.4726 7.53752C13.2195 7.2844 12.8257 7.2844 12.5726 7.53752L9.64762 10.4063V2.1094C9.64762 1.77190 9.36637 1.46252 9.00074 1.46252C8.66324 1.46252 8.35387 1.74377 8.35387 2.1094V10.4063L5.45074 7.53752C5.19762 7.2844 4.80387 7.2844 4.55074 7.53752C4.29762 7.79065 4.29762 8.1844 4.55074 8.43752L8.55074 12.3469Z"
-                          fill=""
-                        />
+                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                     </button>
                   </div>
@@ -155,6 +189,63 @@ const PlanTable = ({ data }: PlanTableProps) => {
           </tbody>
         </table>
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-4">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="p-2 text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 disabled:opacity-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => handlePageChange(page)}
+              className={`px-3 py-1 rounded-full text-sm ${
+                currentPage === page
+                  ? 'bg-primary text-white'
+                  : 'text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="p-2 text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300 disabled:opacity-50"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      )}
+      
+      {/* Edit Modal */}
+      {selectedPlan && (
+        <PlanEditModal
+          plan={{
+            ...selectedPlan,
+            billingCyclesPrices: {
+              DAILY: selectedPlan.price,
+              WEEKLY: selectedPlan.price,
+              MONTHLY: selectedPlan.price,
+              YEARLY: selectedPlan.price,
+            }
+          }}
+          availableCoins={availableCoins}
+          onClose={handleCloseModal}
+          onSave={onPlanUpdate}
+        />
+      )}
     </div>
   );
 };

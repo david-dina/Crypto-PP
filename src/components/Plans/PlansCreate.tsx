@@ -1,56 +1,35 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plan, Cycle, PlanStatus } from '@prisma/client';
+import { Plan, Cycle } from '@prisma/client';
 import { Token } from "@/libs/tokenConfig";
-import { getChainTokenConfigByKey } from "@/libs/tokenConfig";
 import { WalletData } from "@/types/Wallet";
 import toast from "react-hot-toast";
-import { PLAN_CONFIG } from "@/config/constants";
 
 interface BillingCycleInput {
   cycle: Cycle;
   price: number;
 }
 
-interface ModifyPlanModalProps {
-  plan: Partial<Plan>;  // Allow partial plan for creation
+interface CreatePlanModalProps {
   onClose: () => void;
   onSave: (plan: any) => void;
   availableCoins?: Token[];
-  mode?: 'create' | 'modify';
 }
 
-const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({ 
-  plan, 
+const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ 
   onClose, 
-  onSave, 
-  availableCoins = [],  // Default to empty array if not provided
-  mode = 'modify' 
+  onSave,
+  availableCoins = []  // Default to empty array if not provided
 }) => {
-  const [planName, setPlanName] = useState<string>(plan.name || "");
-  const [planDescription, setPlanDescription] = useState<string>(plan.description || "");
-  const [selectedCoins, setSelectedCoins] = useState<string[]>(plan.acceptedCoins || []);
-  const [billingCycles, setBillingCycles] = useState<BillingCycleInput[]>(() => {
-    const allCycles: Cycle[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
-    return allCycles.map(bc => ({
-      cycle: bc,
-      price: plan.billingCycles && plan.billingCycles.find(bc => bc.cycle === bc) 
-        ? plan.billingCycles.find(bc => bc.cycle === bc).price 
-        : plan.price || 0,
-    }));
-  });
+  const [planName, setPlanName] = useState<string>("");
+  const [planDescription, setPlanDescription] = useState<string>("");
+  const [selectedCoins, setSelectedCoins] = useState<string[]>([]);
+  const [billingCycles, setBillingCycles] = useState<BillingCycleInput[]>([]);
   const [walletData, setWalletData] = useState<WalletData[]>([]);
   const [loading, setLoading] = useState(true);
   const [availableCoinsState, setAvailableCoinsState] = useState<Token[]>([]);
-  const [planStatus, setPlanStatus] = useState<PlanStatus>(plan.status || PlanStatus.PRIVATE);
 
-  // Constants for length limits
-  const NAME_MAX_LENGTH = PLAN_CONFIG.NAME_MAX_LENGTH;
-  const DESCRIPTION_MAX_LENGTH = PLAN_CONFIG.DESCRIPTION_MAX_LENGTH;
-
-  // Use useMemo to memoize the availableCoins comparison
   const memoizedAvailableCoins = useMemo(() => availableCoins, [availableCoins]);
 
-  // Use useEffect to update availableCoinsState only when availableCoins changes
   useEffect(() => {
     setAvailableCoinsState(memoizedAvailableCoins);
   }, [memoizedAvailableCoins]);
@@ -109,54 +88,24 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const errors: string[] = [];
-    
     if (billingCycles.length === 0) {
-      errors.push("Please select at least one billing cycle");
+      toast.error("Please select at least one billing cycle");
+      return;
     }
 
     if (selectedCoins.length === 0) {
-      errors.push("Please select at least one accepted coin");
-    }
-
-    // Check if any billing cycle has a price of 0
-    const invalidPrices = billingCycles.filter(bc => bc.price <= 0);
-    if (invalidPrices.length > 0) {
-      errors.push("All selected billing cycles must have a price greater than 0");
-    }
-
-    // Name validation
-    if (planName.trim() === '') {
-      errors.push("Plan name is required");
-    } else if (planName.length > NAME_MAX_LENGTH) {
-      errors.push(`Plan name must be ${NAME_MAX_LENGTH} characters or less`);
-    }
-
-    // Description validation
-    if (planDescription && planDescription.length > DESCRIPTION_MAX_LENGTH) {
-      errors.push(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less`);
-    }
-
-    // If there are errors, log them and display to user
-    if (errors.length > 0) {
-      console.log("Plan Creation Errors:", errors);
-      
-      // Display errors in a basic alert
-      alert(errors.join('\n'));
-      
+      toast.error("Please select at least one accepted coin");
       return;
     }
 
     onSave({
-      ...plan, // Keep other plan properties
       name: planName,
       description: planDescription,
       acceptedCoins: selectedCoins,
       billingCycles: billingCycles.map(bc => ({
         cycle: bc.cycle,
         price: bc.price,
-      })),
-      status: planStatus,
+      }))
     });
   };
 
@@ -164,7 +113,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 overflow-y-auto">
       <div className="w-full max-w-2xl rounded-lg bg-gray-dark p-6 shadow-card my-20 max-h-[calc(100vh-120px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-white">{mode === 'create' ? 'Create Plan' : 'Modify Plan'}</h2>
+          <h2 className="text-xl font-semibold text-white">Create New Plan</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white"
@@ -180,15 +129,11 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
             <input
               type="text"
               value={planName}
-              onChange={(e) => setPlanName(e.target.value.slice(0, NAME_MAX_LENGTH))}
+              onChange={(e) => setPlanName(e.target.value)}
               className="w-full rounded border-[1.5px] border-stroke bg-white py-3 px-5 font-medium outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter text-black"
               required
               placeholder="Enter plan name"
-              maxLength={NAME_MAX_LENGTH}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {planName.length}/{NAME_MAX_LENGTH} characters
-            </p>
           </div>
 
           {/* Description */}
@@ -196,28 +141,11 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
             <label className="block mb-2 text-white">Description</label>
             <textarea
               value={planDescription}
-              onChange={(e) => setPlanDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
+              onChange={(e) => setPlanDescription(e.target.value)}
               className="w-full rounded border-[1.5px] border-stroke bg-white py-3 px-5 font-medium outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter text-black"
               rows={4}
               placeholder="Describe your subscription plan"
-              maxLength={DESCRIPTION_MAX_LENGTH}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {planDescription.length}/{DESCRIPTION_MAX_LENGTH} characters
-            </p>
-          </div>
-
-          {/* Plan Status */}
-          <div>
-            <label className="block mb-2 text-white">Plan Status</label>
-            <select
-              value={planStatus}
-              onChange={(e) => setPlanStatus(e.target.value as PlanStatus)}
-              className="w-full rounded border-[1.5px] border-stroke bg-white py-3 px-5 font-medium outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter text-black"
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="PRIVATE">Private</option>
-            </select>
           </div>
 
           {/* Billing Cycles */}
@@ -322,7 +250,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600"
             >
-              {mode === 'create' ? 'Create Plan' : 'Update Plan'}
+              Create Plan
             </button>
           </div>
         </form>
@@ -331,4 +259,4 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
   );
 };
 
-export default ModifyPlanModal;
+export default CreatePlanModal;

@@ -1,72 +1,66 @@
-"use server";
 import { prisma } from "@/libs/prismaDb";
 import { isAuthorized } from "@/libs/isAuthorized";
-import { Prisma } from "@prisma/client";
 
-export async function GET(req: Request) {
+export const GET = async (req: Request) => {
   try {
-    // Check if the user is authorized
-    const { user } = await isAuthorized();
+    // 1. Check user authorization
+    const {user} = await isAuthorized();
     if (!user) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // Determine query filters based on user role
-    const whereClause = user.role === "BUSINESS"
-      ? { companyId: (await prisma.company.findFirst({
-            where: { ownerId: user.id },
-          }))?.id }
-      : null;
+    // 2. Find the user's first company
+    const company = await prisma.company.findFirst({
+      where: { ownerId: user.id },
+      select: { id: true }
+    });
 
-    if (!whereClause) {
+    // 3. Check if company exists
+    if (!company) {
       return new Response("No company found", { status: 404 });
     }
 
-    // Fetch plans
+    // 4. Fetch plans for the company
     const plans = await prisma.plan.findMany({
-      where: whereClause,
+      where: { 
+        companyId: company.id,
+        // Include all plans for the company owner
+        // Adjust this filter as needed for different visibility requirements
+        status: {
+          in: ['ACTIVE', 'PRIVATE', 'DISABLED','ARCHIVED']
+        }
+      },
+      include: {
+        billingCycles: true
+      },
       orderBy: {
-        position: 'asc'
-      },
-      select: {
-        id: true,
-        name: true,
-        price: true,
-        billingCycles: true,
-        isTiered: true,
-        tierGroupId: true,
-        position: true,
-        features: true,
-      },
+        createdAt: 'desc'
+      }
     });
 
-    // Return the plans
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: plans,
-      }),
-      { 
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // 5. Transform plans to include first billing cycle price
+    const transformedPlans = plans.map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      price: plan.billingCycles[0]?.price || 0,
+      features: plan.features,
+      acceptedCoins: plan.acceptedCoins,
+      billingCycles: plan.billingCycles.map(cycle => cycle.cycle).filter(Boolean),
+      companyId: plan.companyId,
+      isTiered: plan.isTiered || false,
+      status: plan.status
+    }));
+
+    // 6. Return successful response
+    return new Response(JSON.stringify(transformedPlans), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
 
   } catch (error) {
+    // 7. Handle errors
     console.error("Error fetching plans:", error);
-
-    // Handle Prisma-specific errors
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return new Response("Database error", { status: 500 });
-    }
-
-    if (error instanceof Prisma.PrismaClientValidationError) {
-      return new Response("Validation error", { status: 400 });
-    }
-
-    // Generic error response
-    return new Response("Failed to fetch plans", { status: 500 });
+    return new Response(`${error}`, { status: 500 });
   }
-}
+};

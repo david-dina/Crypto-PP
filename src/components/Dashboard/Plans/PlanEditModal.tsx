@@ -1,45 +1,52 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Plan, Cycle, PlanStatus } from '@prisma/client';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plan } from '@/types/Plan';
 import { Token } from "@/libs/tokenConfig";
 import { getChainTokenConfigByKey } from "@/libs/tokenConfig";
 import { WalletData } from "@/types/Wallet";
-import toast from "react-hot-toast";
-import { PLAN_CONFIG } from "@/config/constants";
+import { Cycle, PlanStatus } from '@prisma/client';
+import { PLAN_CONFIG } from '@/config/constants';
+import toast from 'react-hot-toast';
 
 interface BillingCycleInput {
   cycle: Cycle;
   price: number;
 }
 
-interface ModifyPlanModalProps {
-  plan: Partial<Plan>;  // Allow partial plan for creation
+interface PlanEditModalProps {
+  plan: Plan;
   onClose: () => void;
-  onSave: (plan: any) => void;
+  onSave: (updatedPlan: Plan) => Promise<void>;
   availableCoins?: Token[];
-  mode?: 'create' | 'modify';
 }
 
-const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({ 
+const PlanEditModal: React.FC<PlanEditModalProps> = ({ 
   plan, 
   onClose, 
-  onSave, 
-  availableCoins = [],  // Default to empty array if not provided
-  mode = 'modify' 
-}) => {
+  onSave,
+  availableCoins = []
+}: PlanEditModalProps) => {
   const [planName, setPlanName] = useState<string>(plan.name || "");
   const [planDescription, setPlanDescription] = useState<string>(plan.description || "");
   const [selectedCoins, setSelectedCoins] = useState<string[]>(plan.acceptedCoins || []);
   const [billingCycles, setBillingCycles] = useState<BillingCycleInput[]>(() => {
     const allCycles: Cycle[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
-    return allCycles.map(bc => ({
+    
+    // If billingCycles is a subset of all cycles, use those
+    const cyclesToUse = plan.billingCycles?.length 
+      ? plan.billingCycles as Cycle[] 
+      : allCycles;
+
+    const initialCycles = cyclesToUse.map(bc => ({
       cycle: bc,
-      price: plan.billingCycles && plan.billingCycles.find(bc => bc.cycle === bc) 
-        ? plan.billingCycles.find(bc => bc.cycle === bc).price 
+      price: plan.billingCyclesPrices && plan.billingCyclesPrices[bc] 
+        ? plan.billingCyclesPrices[bc] 
         : plan.price || 0,
     }));
+
+    return initialCycles;
   });
   const [walletData, setWalletData] = useState<WalletData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [availableCoinsState, setAvailableCoinsState] = useState<Token[]>([]);
   const [planStatus, setPlanStatus] = useState<PlanStatus>(plan.status || PlanStatus.PRIVATE);
 
@@ -54,31 +61,6 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
   useEffect(() => {
     setAvailableCoinsState(memoizedAvailableCoins);
   }, [memoizedAvailableCoins]);
-
-  useEffect(() => {
-    const fetchWallets = async () => {
-      try {
-        const response = await fetch("/api/wallets/getWallets", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch wallets");
-        }
-
-        const data = await response.json();
-        setWalletData(data.data || []); 
-      } catch (error) {
-        console.error("Error fetching wallets:", error);
-        toast.error("Failed to fetch wallets");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWallets();
-  }, []);
 
   const toggleCycle = (cycle: Cycle) => {
     const exists = billingCycles.some(bc => bc.cycle === cycle);
@@ -98,85 +80,91 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
     ));
   };
 
-  const toggleCoin = (coin: string) => {
-    if (selectedCoins.includes(coin)) {
-      setSelectedCoins(selectedCoins.filter(c => c !== coin));
-    } else {
-      setSelectedCoins([...selectedCoins, coin]);
-    }
+  const toggleCoin = (coinSymbol: string) => {
+    setSelectedCoins(prev => 
+      prev.includes(coinSymbol)
+        ? prev.filter(coin => coin !== coinSymbol)
+        : [...prev, coinSymbol]
+    );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const errors: string[] = [];
-    
-    if (billingCycles.length === 0) {
-      errors.push("Please select at least one billing cycle");
-    }
-
-    if (selectedCoins.length === 0) {
-      errors.push("Please select at least one accepted coin");
-    }
-
-    // Check if any billing cycle has a price of 0
-    const invalidPrices = billingCycles.filter(bc => bc.price <= 0);
-    if (invalidPrices.length > 0) {
-      errors.push("All selected billing cycles must have a price greater than 0");
-    }
-
-    // Name validation
-    if (planName.trim() === '') {
-      errors.push("Plan name is required");
-    } else if (planName.length > NAME_MAX_LENGTH) {
-      errors.push(`Plan name must be ${NAME_MAX_LENGTH} characters or less`);
-    }
-
-    // Description validation
-    if (planDescription && planDescription.length > DESCRIPTION_MAX_LENGTH) {
-      errors.push(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less`);
-    }
-
-    // If there are errors, log them and display to user
-    if (errors.length > 0) {
-      console.log("Plan Creation Errors:", errors);
+  const handleSave = async () => {
+    try {
+      setLoading(true);
       
-      // Display errors in a basic alert
-      alert(errors.join('\n'));
-      
-      return;
-    }
+      // Validate required fields
+      if (!planName.trim()) {
+        toast.error("Plan name is required");
+        return;
+      }
 
-    onSave({
-      ...plan, // Keep other plan properties
-      name: planName,
-      description: planDescription,
-      acceptedCoins: selectedCoins,
-      billingCycles: billingCycles.map(bc => ({
-        cycle: bc.cycle,
-        price: bc.price,
-      })),
-      status: planStatus,
-    });
+      // Ensure at least one billing cycle is selected
+      if (billingCycles.length === 0) {
+        toast.error("Please select at least one billing cycle");
+        return;
+      }
+
+      // Ensure at least one coin is selected
+      if (selectedCoins.length === 0) {
+        toast.error("Please select at least one accepted coin");
+        return;
+      }
+
+      const planToSave = {
+        ...plan,
+        name: planName.trim(),
+        description: planDescription.trim(),
+        status: planStatus,
+        billingCycles: billingCycles.map(bc => bc.cycle),
+        billingCyclesPrices: billingCycles.reduce((acc, curr) => {
+          acc[curr.cycle] = curr.price;
+          return acc;
+        }, {} as Record<Cycle, number>),
+        acceptedCoins: selectedCoins,
+      };
+
+      console.log('Saving plan:', planToSave);
+      
+      // Ensure onSave is a function before calling
+      if (typeof onSave !== 'function') {
+        throw new Error('Save function is not defined');
+      }
+
+      await onSave(planToSave);
+      onClose();
+    } catch (error) {
+      console.error("Error saving plan:", error);
+      
+      // More specific error handling
+      if (error instanceof TypeError) {
+        toast.error("Network error: Unable to connect to the server");
+      } else if (error instanceof Error) {
+        toast.error(error.message || "Failed to save plan");
+      } else {
+        toast.error("An unexpected error occurred while saving the plan");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black bg-opacity-50 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-lg bg-gray-dark p-6 shadow-card my-20 max-h-[calc(100vh-120px)] overflow-y-auto">
+      <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-dark p-6 shadow-card my-20 max-h-[calc(100vh-120px)] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-white">{mode === 'create' ? 'Create Plan' : 'Modify Plan'}</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Plan</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSave} className="space-y-6">
           {/* Plan Name */}
           <div>
-            <label className="block mb-2 text-white">Plan Name</label>
+            <label className="block mb-2 text-gray-900 dark:text-white">Plan Name</label>
             <input
               type="text"
               value={planName}
@@ -186,14 +174,14 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
               placeholder="Enter plan name"
               maxLength={NAME_MAX_LENGTH}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {planName.length}/{NAME_MAX_LENGTH} characters
             </p>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block mb-2 text-white">Description</label>
+            <label className="block mb-2 text-gray-900 dark:text-white">Description</label>
             <textarea
               value={planDescription}
               onChange={(e) => setPlanDescription(e.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
@@ -202,14 +190,14 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
               placeholder="Describe your subscription plan"
               maxLength={DESCRIPTION_MAX_LENGTH}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {planDescription.length}/{DESCRIPTION_MAX_LENGTH} characters
             </p>
           </div>
 
           {/* Plan Status */}
           <div>
-            <label className="block mb-2 text-white">Plan Status</label>
+            <label className="block mb-2 text-gray-900 dark:text-white">Plan Status</label>
             <select
               value={planStatus}
               onChange={(e) => setPlanStatus(e.target.value as PlanStatus)}
@@ -217,14 +205,15 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
             >
               <option value="ACTIVE">Active</option>
               <option value="PRIVATE">Private</option>
+
             </select>
           </div>
 
           {/* Billing Cycles */}
           <div className="mb-8">
-            <label className="block mb-2 text-white">Billing Cycles & Pricing</label>
+            <label className="block mb-2 text-gray-900 dark:text-white">Billing Cycles & Pricing</label>
             <div className="flex flex-wrap gap-3">
-              {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map((cycle) => {
+              {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as Cycle[]).map((cycle) => {
                 const cycleData = billingCycles.find(bc => bc.cycle === cycle);
                 return (
                   <div key={cycle} className="flex flex-col gap-2">
@@ -234,7 +223,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
                       className={`px-4 py-2 rounded border flex items-center gap-2 ${
                         cycleData
                           ? "bg-primary text-white border-primary"
-                          : "border-strokedark bg-boxdark text-white hover:bg-gray-700"
+                          : "bg-gray-200 text-black hover:bg-gray-300"
                       }`}
                     >
                       {cycle}
@@ -242,7 +231,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
                     
                     {cycleData && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400">$</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">$</span>
                         <input
                           type="number"
                           value={cycleData.price}
@@ -262,18 +251,16 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
 
           {/* Accepted Coins */}
           <div>
-            <label className="block mb-2 text-white">Accepted Coins</label>
+            <label className="block mb-2 text-gray-900 dark:text-white">Accepted Coins</label>
             {loading ? (
-              <div className="text-gray-300">
+              <div className="text-gray-500 dark:text-gray-400">
                 Loading available coins...
               </div>
             ) : (
               <>
                 {availableCoinsState.length === 0 ? (
-                  <p className="text-sm text-gray-300">
-                    {walletData.length === 0 
-                      ? "No wallets connected. Please connect a wallet first."
-                      : "No coins available for your connected wallets."}
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No coins available
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-3">
@@ -285,7 +272,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
                         className={`px-4 py-2 rounded border flex items-center gap-2 ${
                           selectedCoins.includes(coin.symbol)
                             ? "bg-primary text-white border-primary"
-                            : "border-strokedark bg-boxdark text-white hover:bg-gray-700"
+                            : "bg-gray-200 text-black hover:bg-gray-300"
                         }`}
                       >
                         {coin.logoUrl && (
@@ -314,7 +301,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-500 hover:text-gray-700"
+              className="px-4 py-2 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300"
             >
               Cancel
             </button>
@@ -322,7 +309,7 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
               type="submit"
               className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600"
             >
-              {mode === 'create' ? 'Create Plan' : 'Update Plan'}
+              Update Plan
             </button>
           </div>
         </form>
@@ -331,4 +318,4 @@ const ModifyPlanModal: React.FC<ModifyPlanModalProps> = ({
   );
 };
 
-export default ModifyPlanModal;
+export default PlanEditModal;
