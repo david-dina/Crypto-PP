@@ -1,16 +1,13 @@
 import { prisma } from "@/libs/prismaDb";
 import { lucia } from "@/auth";
-import { cookies } from "next/headers";
+import {isAuthorized}from "@/libs/isAuthorized"
 import { PlanStatus } from '@prisma/client';
 import { PLAN_CONFIG } from "@/config/constants";
 
 export const POST = async (req: Request) => {
   try {
     // 1. Validate session
-    const sessionId = cookies().get(lucia.sessionCookieName)?.value ?? null;
-    const { user } = sessionId 
-      ? await lucia.validateSession(sessionId) 
-      : { user: null };
+    const {user} = await isAuthorized()
 
     if (!user) {
       return new Response("Unauthorized", { status: 401 });

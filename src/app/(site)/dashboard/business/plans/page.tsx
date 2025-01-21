@@ -108,41 +108,66 @@ export default function PlansPage() {
 
       // Prepare payload
       const payload = {
-        ...updatedPlan,
+        id: updatedPlan.id,
+        name: updatedPlan.name,
+        description: updatedPlan.description,
+        features: updatedPlan.features,
+        billingCycles: Object.keys(updatedPlan.billingCyclesPrices),
+        billingCyclesPrices: updatedPlan.billingCyclesPrices,
         acceptedCoins: coinsToUse,
-        billingCycles: updatedPlan.billingCycles,
-        billingCyclesPrices: updatedPlan.billingCyclesPrices
+        status: updatedPlan.status
       };
 
       // Network request with timeout and error handling
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
 
-      const response = await fetch("/api/business/plans/updateplan", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      });
+      try {
+        const response = await fetch("/api/business/plans/updateplan", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Update plan error response:', errorText);
+          throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        }
+
+        // Reload plans instead of updating a single plan
+        const plansResponse = await fetch("/api/business/plans/getplans");
+        if (!plansResponse.ok) {
+          throw new Error("Failed to fetch updated plans");
+        }
+        const updatedPlans = await plansResponse.json();
+        
+        setPlans(updatedPlans);
+
+        toast.success("Plan updated successfully");
+        return updatedPlans;
+      } catch (err) {
+        console.error("Detailed error updating plan:", err, {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        });
+        
+        // Specific error handling
+        if (err.name === 'AbortError') {
+          toast.error("Request timed out. Please try again.");
+        } else if (err instanceof TypeError) {
+          toast.error(`Network Error: ${err.message}. Please check your internet connection.`);
+        } else if (err instanceof Error) {
+          toast.error(`Update Failed: ${err.message}`);
+        } else {
+          toast.error("An unexpected error occurred while updating the plan.");
+        }
+        throw err;
       }
-
-      const updatedPlanData = await response.json();
-      
-      // Update the plans state
-      setPlans(prevPlans => 
-        prevPlans.map(plan => 
-          plan.id === updatedPlan.id ? updatedPlanData : plan
-        )
-      );
-
-      toast.success("Plan updated successfully");
-      return updatedPlanData;
     } catch (err) {
       console.error("Error updating plan:", err);
       

@@ -36,12 +36,17 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
       ? plan.billingCycles as Cycle[] 
       : allCycles;
 
-    const initialCycles = cyclesToUse.map(bc => ({
-      cycle: bc,
-      price: plan.billingCyclesPrices && plan.billingCyclesPrices[bc] 
-        ? plan.billingCyclesPrices[bc] 
-        : plan.price || 0,
-    }));
+    const initialCycles = cyclesToUse.map(bc => {
+      // Prioritize billingCyclesPrices, then fallback to 0
+      const cyclePrice = plan.billingCyclesPrices?.[bc] ?? 0;
+      
+      console.log(`Initializing cycle ${bc} with price ${cyclePrice}`);
+      
+      return {
+        cycle: bc,
+        price: cyclePrice
+      };
+    });
 
     return initialCycles;
   });
@@ -92,57 +97,25 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
     try {
       setLoading(true);
       
-      // Validate required fields
-      if (!planName.trim()) {
-        toast.error("Plan name is required");
-        return;
-      }
+      // Convert billingCycles array to the format expected by the API
+      const billingCyclesPrices = {};
+      billingCycles.forEach(bc => {
+        billingCyclesPrices[bc.cycle] = Number(bc.price);
+      });
 
-      // Ensure at least one billing cycle is selected
-      if (billingCycles.length === 0) {
-        toast.error("Please select at least one billing cycle");
-        return;
-      }
-
-      // Ensure at least one coin is selected
-      if (selectedCoins.length === 0) {
-        toast.error("Please select at least one accepted coin");
-        return;
-      }
-
-      const planToSave = {
+      await onSave({
         ...plan,
-        name: planName.trim(),
-        description: planDescription.trim(),
+        name: planName,
+        description: planDescription,
         status: planStatus,
         billingCycles: billingCycles.map(bc => bc.cycle),
-        billingCyclesPrices: billingCycles.reduce((acc, curr) => {
-          acc[curr.cycle] = curr.price;
-          return acc;
-        }, {} as Record<Cycle, number>),
+        billingCyclesPrices,
         acceptedCoins: selectedCoins,
-      };
-
-      console.log('Saving plan:', planToSave);
-      
-      // Ensure onSave is a function before calling
-      if (typeof onSave !== 'function') {
-        throw new Error('Save function is not defined');
-      }
-
-      await onSave(planToSave);
+      });
       onClose();
     } catch (error) {
       console.error("Error saving plan:", error);
-      
-      // More specific error handling
-      if (error instanceof TypeError) {
-        toast.error("Network error: Unable to connect to the server");
-      } else if (error instanceof Error) {
-        toast.error(error.message || "Failed to save plan");
-      } else {
-        toast.error("An unexpected error occurred while saving the plan");
-      }
+      toast.error("Failed to save plan");
     } finally {
       setLoading(false);
     }
