@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Plan } from "@/types/Plan";
 import PlansFilter from "./PlansFilter";
 import PlanEditModal from "./PlanEditModal";
+import DeletePlanModal from "./DeletePlanModal";
 import { PAGINATION_CONFIG } from "@/config/constants";
 import { Cycle, PlanStatus } from "@prisma/client";
 import toast from 'react-hot-toast';
@@ -28,6 +29,7 @@ const PlanTable = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
 
   // Filtering logic
   const filteredPlans = data.filter(plan => {
@@ -69,12 +71,72 @@ const PlanTable = ({
     setSelectedPlan(plan);
   };
 
+  const handleDeletePlan = (plan: Plan) => {
+    setPlanToDelete(plan);
+  };
+
+  const handleConfirmDelete = async (planId: string) => {
+    // Remove the deleted plan from the local state
+    // You might want to implement this based on your state management
+    // For example, refetch plans or filter out the deleted plan
+    // This is a placeholder - you'll likely want to update this based on your specific requirements
+    console.log(`Plan ${planId} deleted successfully`);
+  };
+
   const handleCloseModal = () => {
     setSelectedPlan(null);
+    setPlanToDelete(null);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleDownloadPlan = (plan: Plan) => {
+    // Convert plan to CSV
+    const convertToCSV = (obj: any) => {
+      const flattenObject = (ob: any) => {
+        let toReturn: any = {};
+        
+        for (let i in ob) {
+          if (!ob.hasOwnProperty(i)) continue;
+          
+          if ((typeof ob[i]) == 'object' && ob[i] !== null) {
+            let flatObject = flattenObject(ob[i]);
+            for (let x in flatObject) {
+              if (!flatObject.hasOwnProperty(x)) continue;
+              
+              toReturn[`${i}_${x}`] = flatObject[x];
+            }
+          } else {
+            toReturn[i] = ob[i];
+          }
+        }
+        return toReturn;
+      };
+
+      const flattened = flattenObject(obj);
+      const headers = Object.keys(flattened);
+      const values = headers.map(header => 
+        `"${String(flattened[header]).replace(/"/g, '""')}"`
+      );
+
+      return [headers.join(','), values.join(',')].join('\n');
+    };
+
+    const csvData = convertToCSV(plan);
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `plan_${plan.name}_${plan.id}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Downloaded plan: ${plan.name}`);
   };
 
   return (
@@ -162,18 +224,18 @@ const PlanTable = ({
                         />
                       </svg>
                     </button>
-                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </button>
-                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+                    <button 
+                      onClick={() => handleDeletePlan(plan)}
+                      className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                    >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
-                    <button className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+                    <button 
+                      onClick={() => handleDownloadPlan(plan)}
+                      className="text-gray-900 hover:text-gray-700 dark:text-white dark:hover:text-gray-300"
+                    >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
@@ -240,6 +302,16 @@ const PlanTable = ({
           }}
           availableCoins={availableCoins}
           onClose={handleCloseModal}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {planToDelete && (
+        <DeletePlanModal
+          planId={planToDelete.id}
+          planName={planToDelete.name}
+          onClose={handleCloseModal}
+          onDeleteSuccess={handleConfirmDelete}
         />
       )}
     </div>
