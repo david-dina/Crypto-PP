@@ -78,52 +78,57 @@ export default function PlansPage() {
     }
   };
 
+  const refreshPlans = async () => {
+    try {
+      const plansResponse = await fetch("/api/business/plans/getplans", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!plansResponse.ok) {
+        const errorText = await plansResponse.text();
+        throw new Error(errorText || "Failed to fetch plans");
+      }
+
+      const plansData = await plansResponse.json();
+      setPlans(plansData);
+    } catch (error) {
+      console.error("Error refreshing plans:", error);
+      toast.error("Failed to refresh plans");
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
+
   return (
     <DefaultLayout>
-      <div className="flex flex-col h-full">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plans</h2>
-          {plans && plans.length > 0 && (
-            <CreatePlanButton 
-              onPlanCreated={fetchData} 
-              availableCoins={acceptedCoins} 
-            />
-          )}
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center min-h-screen">
-            <span className="text-gray-400">Loading plans...</span>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <p className="text-red-500">{error}</p>
-          </div>
-        ) : plans && plans.length > 0 ? (
-          <div className="rounded-sm">
-            <PlanTable 
-              data={plans} 
-              availableCoins={acceptedCoins}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20">
-            <h2 className="text-lg text-gray-400 mb-3">
-              No plans created yet
-            </h2>
-            <p className="text-sm text-gray-500 mb-8">
-              Create your first subscription plan to get started
-            </p>
-            <CreatePlanButton 
-              onPlanCreated={fetchData} 
-              availableCoins={acceptedCoins} 
-            />
-          </div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          Subscription Plans
+        </h1>
+        {!isLoading && (
+          <CreatePlanButton 
+            onPlanCreated={refreshPlans}
+            availableCoins={acceptedCoins}
+          />
         )}
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <span className="loading-spinner text-primary">Loading...</span>
+        </div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <PlanTable 
+          data={plans} 
+          availableCoins={acceptedCoins}
+          onPlanDelete={refreshPlans}
+        />
+      )}
     </DefaultLayout>
   );
 }

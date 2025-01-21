@@ -55,7 +55,7 @@ const DeletePlanModal: React.FC<DeletePlanModalProps> = ({
       }
 
       toast.success(`Plan "${planName}" deleted successfully`);
-      onDeleteSuccess(planId);
+      onDeleteSuccess(planId); // No changes needed here
       onClose();
     } catch (error) {
       console.error('Error deleting plan:', error);

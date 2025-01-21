@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Plan, Cycle } from '@prisma/client';
 import { Token } from "@/libs/tokenConfig";
 import { WalletData } from "@/types/Wallet";
@@ -11,53 +11,30 @@ interface BillingCycleInput {
 
 interface CreatePlanModalProps {
   onClose: () => void;
-  onSave: (plan: any) => void;
+  onPlanCreated?: () => void;
   availableCoins?: Token[];
 }
 
 const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ 
   onClose, 
-  onSave,
+  onPlanCreated,
   availableCoins = []  // Default to empty array if not provided
 }) => {
   const [planName, setPlanName] = useState<string>("");
   const [planDescription, setPlanDescription] = useState<string>("");
   const [selectedCoins, setSelectedCoins] = useState<string[]>([]);
   const [billingCycles, setBillingCycles] = useState<BillingCycleInput[]>([]);
-  const [walletData, setWalletData] = useState<WalletData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [availableCoinsState, setAvailableCoinsState] = useState<Token[]>([]);
 
-  const memoizedAvailableCoins = useMemo(() => availableCoins, [availableCoins]);
-
   useEffect(() => {
-    setAvailableCoinsState(memoizedAvailableCoins);
-  }, [memoizedAvailableCoins]);
-
-  useEffect(() => {
-    const fetchWallets = async () => {
-      try {
-        const response = await fetch("/api/wallets/getWallets", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch wallets");
-        }
-
-        const data = await response.json();
-        setWalletData(data.data || []); 
-      } catch (error) {
-        console.error("Error fetching wallets:", error);
-        toast.error("Failed to fetch wallets");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWallets();
-  }, []);
+    setAvailableCoinsState(availableCoins);
+    // If coins are passed directly, set loading to false
+    if (availableCoins.length > 0) {
+      setLoading(false);
+    }
+  }, [availableCoins]);
 
   const toggleCycle = (cycle: Cycle) => {
     const exists = billingCycles.some(bc => bc.cycle === cycle);
@@ -85,7 +62,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (billingCycles.length === 0) {
@@ -98,15 +75,45 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
       return;
     }
 
-    onSave({
+    const payload = {
       name: planName,
       description: planDescription,
       acceptedCoins: selectedCoins,
       billingCycles: billingCycles.map(bc => ({
         cycle: bc.cycle,
         price: bc.price,
-      }))
-    });
+      })),
+      status: 'PRIVATE'
+    };
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/business/plans/createplan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create plan");
+      }
+
+      // Optional callback for parent component
+      if (onPlanCreated) {
+        await onPlanCreated();
+      }
+
+      toast.success("Plan created successfully");
+      onClose();
+    } catch (error) {
+      console.error("Error creating plan:", error);
+      toast.error(`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -196,61 +203,53 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
                 Loading available coins...
               </div>
             ) : (
-              <>
-                {availableCoinsState.length === 0 ? (
-                  <p className="text-sm text-gray-300">
-                    {walletData.length === 0 
-                      ? "No wallets connected. Please connect a wallet first."
-                      : "No coins available for your connected wallets."}
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {availableCoinsState.map((coin) => (
-                      <button
-                        key={`${coin.symbol}-${coin.address}`}
-                        type="button"
-                        onClick={() => toggleCoin(coin.symbol)}
-                        className={`px-4 py-2 rounded border flex items-center gap-2 ${
-                          selectedCoins.includes(coin.symbol)
-                            ? "bg-primary text-white border-primary"
-                            : "border-strokedark bg-boxdark text-white hover:bg-gray-700"
-                        }`}
-                      >
-                        {coin.logoUrl && (
-                          <img
-                            src={coin.logoUrl}
-                            alt={coin.name}
-                            className="w-4 h-4 mr-2"
-                          />
-                        )}
-                        {coin.symbol}
-                        {coin.isStablecoin && (
-                          <span className="text-xs bg-green-500 bg-opacity-20 text-green-500 px-2 py-0.5 rounded ml-2">
-                            Stable
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
+              <div className="flex flex-wrap gap-3">
+                {availableCoinsState.map((coin) => (
+                  <button
+                    key={`${coin.symbol}-${coin.address}`}
+                    type="button"
+                    onClick={() => toggleCoin(coin.symbol)}
+                    className={`px-4 py-2 rounded border flex items-center gap-2 ${
+                      selectedCoins.includes(coin.symbol)
+                        ? "bg-primary text-white border-primary"
+                        : "border-strokedark bg-boxdark text-white hover:bg-gray-700"
+                    }`}
+                  >
+                    {coin.logoUrl && (
+                      <img
+                        src={coin.logoUrl}
+                        alt={coin.name}
+                        className="w-4 h-4 mr-2"
+                      />
+                    )}
+                    {coin.symbol}
+                    {coin.isStablecoin && (
+                      <span className="text-xs bg-green-500 bg-opacity-20 text-green-500 px-2 py-0.5 rounded ml-2">
+                        Stable
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex justify-end space-x-4 mt-6">
+          <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-500 hover:text-gray-700"
+              disabled={isSaving}
+              className="px-4 py-2 text-gray-400 hover:text-white disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600"
+              disabled={isSaving}
+              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50"
             >
-              Create Plan
+              {isSaving ? 'Creating...' : 'Create Plan'}
             </button>
           </div>
         </form>

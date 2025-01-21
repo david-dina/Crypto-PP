@@ -13,6 +13,7 @@ import {Token} from 'tokenconfigs'
 interface PlanTableProps {
   data: Plan[];
   onPlanUpdate?: (updatedPlan: Plan) => Promise<void>;
+  onPlanDelete?: () => Promise<void>;
   availableCoins?: Token[];
 }
 
@@ -20,7 +21,8 @@ const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
 
 const PlanTable = ({ 
   data, 
-  availableCoins = []
+  availableCoins = [],
+  onPlanDelete
 }: PlanTableProps) => {
   const [currentFilter, setCurrentFilter] = useState<{
     cycles?: Cycle[];
@@ -76,11 +78,18 @@ const PlanTable = ({
   };
 
   const handleConfirmDelete = async (planId: string) => {
-    // Remove the deleted plan from the local state
-    // You might want to implement this based on your state management
-    // For example, refetch plans or filter out the deleted plan
-    // This is a placeholder - you'll likely want to update this based on your specific requirements
-    console.log(`Plan ${planId} deleted successfully`);
+    try {
+      // If a delete callback is provided, call it
+      if (onPlanDelete) {
+        await onPlanDelete();
+      }
+      
+      // Close the delete modal
+      setPlanToDelete(null);
+    } catch (error) {
+      console.error('Error in delete handling:', error);
+      toast.error('Failed to delete plan');
+    }
   };
 
   const handleCloseModal = () => {
