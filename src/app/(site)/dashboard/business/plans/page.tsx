@@ -81,108 +81,6 @@ export default function PlansPage() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const updatePlan = async (updatedPlan: Plan) => {
-    try {
-      // Validate input
-      if (!updatedPlan.name || updatedPlan.name.trim() === '') {
-        toast.error("Plan name is required");
-        return;
-      }
-
-      // Ensure billing cycles are present
-      if (!updatedPlan.billingCycles || updatedPlan.billingCycles.length === 0) {
-        toast.error("At least one billing cycle is required");
-        return;
-      }
-
-      // Ensure accepted coins are present
-      const coinsToUse = updatedPlan.acceptedCoins?.length 
-        ? updatedPlan.acceptedCoins 
-        : acceptedCoins.map(coin => coin.symbol);
-
-      if (!coinsToUse || coinsToUse.length === 0) {
-        toast.error("At least one accepted coin is required");
-        return;
-      }
-
-      // Prepare payload
-      const payload = {
-        id: updatedPlan.id,
-        name: updatedPlan.name,
-        description: updatedPlan.description,
-        features: updatedPlan.features,
-        billingCycles: Object.keys(updatedPlan.billingCyclesPrices),
-        billingCyclesPrices: updatedPlan.billingCyclesPrices,
-        acceptedCoins: coinsToUse,
-        status: updatedPlan.status
-      };
-
-      // Network request with timeout and error handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
-
-      try {
-        const response = await fetch("/api/business/plans/updateplan", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Update plan error response:', errorText);
-          throw new Error(errorText || `HTTP error! status: ${response.status}`);
-        }
-
-        // Reload plans instead of updating a single plan
-        const plansResponse = await fetch("/api/business/plans/getplans");
-        if (!plansResponse.ok) {
-          throw new Error("Failed to fetch updated plans");
-        }
-        const updatedPlans = await plansResponse.json();
-        
-        setPlans(updatedPlans);
-
-        toast.success("Plan updated successfully");
-        return updatedPlans;
-      } catch (err) {
-        console.error("Detailed error updating plan:", err, {
-          name: err.name,
-          message: err.message,
-          stack: err.stack
-        });
-        
-        // Specific error handling
-        if (err.name === 'AbortError') {
-          toast.error("Request timed out. Please try again.");
-        } else if (err instanceof TypeError) {
-          toast.error(`Network Error: ${err.message}. Please check your internet connection.`);
-        } else if (err instanceof Error) {
-          toast.error(`Update Failed: ${err.message}`);
-        } else {
-          toast.error("An unexpected error occurred while updating the plan.");
-        }
-        throw err;
-      }
-    } catch (err) {
-      console.error("Error updating plan:", err);
-      
-      // Specific error handling
-      if (err instanceof TypeError) {
-        toast.error(`Network Error: ${err.message}. Please check your internet connection.`);
-      } else if (err instanceof Error) {
-        toast.error(`Update Failed: ${err.message}`);
-      } else {
-        toast.error("An unexpected error occurred while updating the plan.");
-      }
-      throw err;
-    }
-  };
-
   return (
     <DefaultLayout>
       <div className="flex flex-col h-full">
@@ -208,7 +106,6 @@ export default function PlansPage() {
           <div className="rounded-sm">
             <PlanTable 
               data={plans} 
-              onPlanUpdate={updatePlan}
               availableCoins={acceptedCoins}
             />
           </div>

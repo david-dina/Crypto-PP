@@ -8,23 +8,23 @@ export async function PUT(req: Request) {
     console.log('Starting plan update process');
     
     // 1. Check user authorization
-    const {user} = await isAuthorized();
+    const { user } = await isAuthorized();
+    console.log("authorized user")
     if (!user) {
       console.log('Unauthorized access attempt');
-      return new Response("Unauthorized", { status: 401 });
+      return new Response(JSON.stringify({
+        error: "Unauthorized: Please log in"
+      }), { 
+        status: 401,
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
-
-    // 2. Parse the request body
-    let body;
-    try {
-      body = await req.json();
-      console.log('Received body:', JSON.stringify(body, null, 2));
-    } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
-      return new Response("Invalid request body", { status: 400 });
-    }
-
-    const { 
+    console.log('reading')
+    console.log(req)
+    const requestBody = await req.json();
+    console.log('Received request body:', JSON.stringify(requestBody, null, 2));
+    // Directly destructure known variables from the JSON body
+    let { 
       id,
       name, 
       description, 
@@ -33,15 +33,76 @@ export async function PUT(req: Request) {
       billingCyclesPrices,
       acceptedCoins,
       status = PlanStatus.PRIVATE  // Default to PRIVATE if not specified
-    } = body;
+    } = requestBody;
+    
+    // Optional: Add logging if needed
+    console.log('Received plan update:', { 
+      id,
+      name, 
+      description, 
+      features, 
+      billingCycles, 
+      billingCyclesPrices,
+      acceptedCoins,
+      status
+    });
 
     // 3. Validate required fields
-    if (!id || !name || !billingCycles || !Array.isArray(billingCycles)) {
-      console.log('Invalid plan data', { id, name, billingCycles });
-      return new Response("Invalid plan data", { status: 400 });
+    if (!id) {
+      console.error('Plan update failed: Missing plan ID');
+      return new Response(JSON.stringify({
+        error: "Missing plan ID",
+        details: "A valid plan ID is required for updating a plan"
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
 
-    // 4. Additional validations
+    if (!name || !billingCycles || !Array.isArray(billingCycles)) {
+      console.log('Invalid plan data', { id, name, billingCycles });
+      return new Response(JSON.stringify({
+        error: "Invalid plan data"
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // 4. Find the existing company
+    const company = await prisma.company.findFirst({
+      where: { ownerId: user.id },
+      select: { id: true }
+    });
+
+    if (!company) {
+      console.error(`No company found for user ${user.id}`);
+      return new Response(JSON.stringify({
+        error: "Company not found",
+        details: "Unable to locate the company associated with this user"
+      }), { 
+        status: 404,
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Validate billing cycles and prices
+    if (!billingCycles || billingCycles.length === 0) {
+      console.warn('No billing cycles provided, using default');
+      billingCycles = ['MONTHLY']; // Default fallback
+    }
+
+    // Validate billing cycle prices
+    const validBillingCyclesPrices = {
+      DAILY: billingCyclesPrices?.DAILY || 0,
+      WEEKLY: billingCyclesPrices?.WEEKLY || 0,
+      MONTHLY: billingCyclesPrices?.MONTHLY || 0,
+      YEARLY: billingCyclesPrices?.YEARLY || 0
+    };
+
+    console.log('Validated Billing Cycles Prices:', validBillingCyclesPrices);
+
+    // 5. Additional validations
     const NAME_MAX_LENGTH = PLAN_CONFIG.NAME_MAX_LENGTH;
     const DESCRIPTION_MAX_LENGTH = PLAN_CONFIG.DESCRIPTION_MAX_LENGTH;
 
@@ -67,23 +128,12 @@ export async function PUT(req: Request) {
       });
     }
 
-    // 5. Find the user's first company
-    const company = await prisma.company.findFirst({
-      where: { ownerId: user.id },
-      select: { id: true }
-    });
-
-    if (!company) {
-      console.log('No company found for user');
-      return new Response("No company found", { status: 404 });
-    }
-
     // 6. Update the plan in the database
     console.log('Attempting to update plan', { 
       planId: id, 
       companyId: company.id, 
       billingCycles,
-      billingCyclesPrices
+      billingCyclesPrices: validBillingCyclesPrices
     });
 
     const updatedPlan = await prisma.plan.update({
@@ -100,7 +150,7 @@ export async function PUT(req: Request) {
         billingCycles: {
           deleteMany: {}, // Remove existing billing cycles
           create: billingCycles.map(cycle => {
-            const price = billingCyclesPrices?.[cycle] || 0;
+            const price = validBillingCyclesPrices[cycle] || 0;
             console.log(`Cycle: ${cycle}, Price: ${price}`);
             return {
               cycle: cycle,
@@ -113,7 +163,13 @@ export async function PUT(req: Request) {
 
     console.log('Plan updated successfully', { planId: updatedPlan.id });
 
-    return new Response("Successful", { status: 200 });
+    return new Response(JSON.stringify({
+      message: "Plan updated successfully",
+      planId: updatedPlan.id
+    }), { 
+      status: 200,
+      headers: { 'Content-Type': 'application/json' } 
+    });
 
   } catch (error) {
     console.error("Detailed error updating plan:", error, {
@@ -124,7 +180,7 @@ export async function PUT(req: Request) {
     
     return new Response(JSON.stringify({
       error: "An unexpected error occurred while updating the plan",
-      details: error.message
+      details: error.message || 'Unknown error'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

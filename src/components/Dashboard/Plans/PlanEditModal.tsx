@@ -15,14 +15,12 @@ interface BillingCycleInput {
 interface PlanEditModalProps {
   plan: Plan;
   onClose: () => void;
-  onSave: (updatedPlan: Plan) => Promise<void>;
   availableCoins?: Token[];
 }
 
 const PlanEditModal: React.FC<PlanEditModalProps> = ({ 
   plan, 
   onClose, 
-  onSave,
   availableCoins = []
 }: PlanEditModalProps) => {
   const [planName, setPlanName] = useState<string>(plan.name || "");
@@ -31,26 +29,23 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
   const [billingCycles, setBillingCycles] = useState<BillingCycleInput[]>(() => {
     const allCycles: Cycle[] = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
     
-    // If billingCycles is a subset of all cycles, use those
+    // If billingCycles exists, use those cycles, otherwise use all cycles
     const cyclesToUse = plan.billingCycles?.length 
-      ? plan.billingCycles as Cycle[] 
+      ? plan.billingCycles
       : allCycles;
 
-    const initialCycles = cyclesToUse.map(bc => {
-      // Prioritize billingCyclesPrices, then fallback to 0
-      const cyclePrice = plan.billingCyclesPrices?.[bc] ?? 0;
-      
-      console.log(`Initializing cycle ${bc} with price ${cyclePrice}`);
-      
-      return {
-        cycle: bc,
-        price: cyclePrice
-      };
-    });
+    console.log('Initial Plan:', plan);
+    console.log('Initial Billing Cycles:', plan.billingCycles);
+    console.log('Initial Billing Cycles Prices:', plan.billingCyclesPrices);
 
-    return initialCycles;
+    const initialBillingCycles = cyclesToUse.map(cycle => ({
+      cycle,
+      price: plan.billingCyclesPrices?.[cycle] ?? 0
+    }));
+
+    console.log('Initialized Billing Cycles:', initialBillingCycles);
+    return initialBillingCycles;
   });
-  const [walletData, setWalletData] = useState<WalletData[]>([]);
   const [loading, setLoading] = useState(false);
   const [availableCoinsState, setAvailableCoinsState] = useState<Token[]>([]);
   const [planStatus, setPlanStatus] = useState<PlanStatus>(plan.status || PlanStatus.PRIVATE);
@@ -70,19 +65,26 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
   const toggleCycle = (cycle: Cycle) => {
     const exists = billingCycles.some(bc => bc.cycle === cycle);
     if (exists) {
-      setBillingCycles(billingCycles.filter(bc => bc.cycle !== cycle));
+      const updatedCycles = billingCycles.filter(bc => bc.cycle !== cycle);
+      console.log(`Removing cycle ${cycle}. Updated cycles:`, updatedCycles);
+      setBillingCycles(updatedCycles);
     } else {
-      setBillingCycles([...billingCycles, {
+      const updatedCycles = [...billingCycles, {
         cycle,
         price: 0,
-      }]);
+      }];
+      console.log(`Adding cycle ${cycle}. Updated cycles:`, updatedCycles);
+      setBillingCycles(updatedCycles);
     }
   };
 
   const updateCyclePrice = (cycle: Cycle, price: number) => {
-    setBillingCycles(billingCycles.map(bc => 
+    console.log(`Updating price for cycle ${cycle} to ${price}`);
+    const updatedCycles = billingCycles.map(bc => 
       bc.cycle === cycle ? { ...bc, price } : bc
-    ));
+    );
+    console.log('Updated Billing Cycles:', updatedCycles);
+    setBillingCycles(updatedCycles);
   };
 
   const toggleCoin = (coinSymbol: string) => {
@@ -98,24 +100,56 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
       setLoading(true);
       
       // Convert billingCycles array to the format expected by the API
-      const billingCyclesPrices = {};
+      const billingCyclesPrices: Record<Cycle, number> = {
+        DAILY: 0,
+        WEEKLY: 0,
+        MONTHLY: 0,
+        YEARLY: 0,
+      };
       billingCycles.forEach(bc => {
         billingCyclesPrices[bc.cycle] = Number(bc.price);
       });
 
-      await onSave({
-        ...plan,
+      // Prepare payload
+      const payload = {
+        id: plan.id,
         name: planName,
         description: planDescription,
-        status: planStatus,
+        features: plan.features,
         billingCycles: billingCycles.map(bc => bc.cycle),
         billingCyclesPrices,
         acceptedCoins: selectedCoins,
+        status: planStatus
+      };
+
+      const response = await fetch("/api/business/plans/updateplan", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload),
       });
-      onClose();
+
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Update plan error response:', errorText);
+        
+        toast.error(`Failed to update plan: ${response.status} ${response.statusText}`);
+        throw new Error(errorText);
+      }
+      
+      toast.success("Plan updated successfully");
     } catch (error) {
       console.error("Error saving plan:", error);
-      toast.error("Failed to save plan");
+      
+      // Specific error handling
+      if (error instanceof TypeError) {
+        toast.error(`Network Error: ${error.message}. Please check your internet connection.`);
+      } else {
+        toast.error("Failed to save plan");
+      }
     } finally {
       setLoading(false);
     }

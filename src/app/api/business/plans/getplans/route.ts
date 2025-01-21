@@ -1,5 +1,6 @@
 import { prisma } from "@/libs/prismaDb";
 import { isAuthorized } from "@/libs/isAuthorized";
+import { Cycle } from '@prisma/client';
 
 export const GET = async (req: Request) => {
   try {
@@ -47,6 +48,10 @@ export const GET = async (req: Request) => {
       features: plan.features,
       acceptedCoins: plan.acceptedCoins,
       billingCycles: plan.billingCycles.map(cycle => cycle.cycle).filter(Boolean),
+      billingCyclesPrices: plan.billingCycles.reduce((acc, cycle) => {
+        acc[cycle.cycle] = cycle.price || 0;
+        return acc;
+      }, {} as Record<Cycle, number>),
       companyId: plan.companyId,
       isTiered: plan.isTiered || false,
       status: plan.status

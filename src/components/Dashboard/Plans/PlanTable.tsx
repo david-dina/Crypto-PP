@@ -19,10 +19,6 @@ const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
 
 const PlanTable = ({ 
   data, 
-  onPlanUpdate = async () => {
-    console.warn('No onPlanUpdate handler provided');
-    toast.error('Plan update not implemented');
-  },
   availableCoins = []
 }: PlanTableProps) => {
   const [currentFilter, setCurrentFilter] = useState<{
@@ -234,16 +230,16 @@ const PlanTable = ({
         <PlanEditModal
           plan={{
             ...selectedPlan,
-            billingCyclesPrices: {
-              DAILY: selectedPlan.price,
-              WEEKLY: selectedPlan.price,
-              MONTHLY: selectedPlan.price,
-              YEARLY: selectedPlan.price,
+            billingCycles: selectedPlan.billingCycles,
+            billingCyclesPrices: selectedPlan.billingCyclesPrices ?? {
+              DAILY: 0,
+              WEEKLY: 0,
+              MONTHLY: 0,
+              YEARLY: 0
             }
           }}
           availableCoins={availableCoins}
           onClose={handleCloseModal}
-          onSave={onPlanUpdate}
         />
       )}
     </div>
