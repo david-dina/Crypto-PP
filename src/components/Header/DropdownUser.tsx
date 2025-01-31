@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 
-const DropdownUser = () => {
+const DropdownUser = ({ checkout = false }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [userData, setUserData] = useState<User | null>(null);
   const [isLoading,setIsLoading] = useState(true);
@@ -27,20 +27,24 @@ const DropdownUser = () => {
           setUserData(info.user); // Set user data
         } else {
           // Redirect if user data not found or not authenticated
-          router.push("/auth/signin");
+          if (!checkout) {
+            router.push("/auth/signin");
+          }
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
 
         // Redirect on fetch error
-        router.push("/auth/signin");
+        if (!checkout) {
+          router.push("/auth/signin");
+        }
       } finally {
         setIsLoading(false); // Stop loading spinner
       }
     };
 
     fetchData();
-  }, []); // Dependency array ensures this runs only once
+  }, [checkout]); // Dependency array ensures this runs only once
 
   const handleLogout = async () => {
     fetch("/api/user/logout",)
@@ -52,7 +56,13 @@ const DropdownUser = () => {
     }
     setDropdownOpen(false);
     setUserData(null)
-    router.push("/auth/signin");
+    
+    // Modify redirect based on checkout prop
+    if (checkout) {
+      router.refresh(); // Refresh the current page
+    } else {
+      router.push("/auth/signin");
+    }
   };
 
   const profilePic = userData?.avatarUrl ? `https://ubdclxojnftwcnowsgfr.supabase.co/storage/v1/object/public/images/${userData.avatarUrl}`: "/images/placeholders/profile.png";

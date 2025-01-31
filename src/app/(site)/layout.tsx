@@ -13,7 +13,6 @@ const RootLayout: React.FC<RootLayoutProps> = ({ children }) => {
   return (
     <SessionProvider>
       <ToastContext />
-        {/* Wallet Context Provider */}
         {children}
       <ToastContext />
     </SessionProvider>
