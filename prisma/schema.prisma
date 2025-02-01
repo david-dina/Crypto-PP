@@ -16,65 +16,70 @@ model Session {
 }
 
 model User {
-  id                     String         @id @unique @default(cuid())
+  id                     String           @id @unique @default(cuid())
   name                   String?
-  username               String         @unique
-  email                  String         @unique
-  emailVerified          Boolean        @default(false)
+  username               String           @unique
+  email                  String           @unique
+  emailVerified          Boolean          @default(false)
   password               String
   avatarUrl              String?
   phoneNumber            String?
-  createdAt              DateTime       @default(now())
-  role                   UserRole       @default(USER)
-  isActive               Boolean        @default(true)
-  sendEmailNotifications Boolean        @default(true)
-  sendInAppNotifications Boolean        @default(true)
+  createdAt              DateTime         @default(now())
+  role                   UserRole         @default(USER)
+  isActive               Boolean          @default(true)
+  sendEmailNotifications Boolean          @default(true)
+  sendInAppNotifications Boolean          @default(true)
   verificationCode       String?
-  twoFactorEnabled       Boolean        @default(false)
+  twoFactorEnabled       Boolean          @default(false)
   twoFactorSecret        String?
   metadata               Json?
   ActivityLog            ActivityLog[]
+  Company                Company[]
   Session                Session[]
   subscriptions          Subscription[]
   transactions           Transaction[]
-  wallets                Wallet[]
-  Company                Company[]
+  Wallet                 Wallet[]
+  WalletActivity         WalletActivity[]
 }
 
 model Wallet {
-  id            String         @id @unique @default(cuid())
-  address       String         @unique
+  id            String           @id @unique @default(cuid())
+  address       String
   blockchain    String
-  balance       Float          @default(0.0)
+  balance       Float            @default(0.0)
   provider      String
+  userId        String?
+  companyId     String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   providerImage String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
   tokenBalances TokenBalance[]
+  Company       Company?         @relation(fields: [companyId], references: [id])
+  User          User?            @relation(fields: [userId], references: [id])
   activities    WalletActivity[]
 
-  @@unique([address, provider, blockchain]) // Ensure provider and address are unique together
+  @@unique([address, provider, blockchain])
   @@index([address])
 }
 
 model WalletActivity {
-  id        String   @id @unique @default(cuid())
-  walletId  String
-  userId    String
-  lastUsed  DateTime @default(now())
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-  metadata  Json?    // Store additional context about wallet usage
+  id       String   @id @unique @default(cuid())
+  walletId String
+  userId   String
+  lastUsed DateTime @default(now())
+  metadata Json?
+  user     User     @relation(fields: [userId], references: [id])
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
 
-  @@index([walletId])
   @@index([userId])
+  @@index([walletId])
 }
 
 model TokenBalance {
   id        String @id @default(cuid())
   walletId  String
-  tokenName String // Token name/symbol (e.g., "USDC")
-  balance   Float // Token balance (e.g., 100.0)
+  tokenName String
+  balance   Float
   symbol    String
   wallet    Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
@@ -91,46 +96,37 @@ model ActivityLog {
 
 model Company {
   id                String         @id @unique @default(cuid())
-  name              String // Editable Business Name
+  name              String
   category          String
-  currency          String         @default("USD") // Default Fiat Currency
-  acceptedCoins     String[] // Accepted Cryptocurrencies (e.g., BTC, ETH)
-  restrictedRegions String[]       @default([]) // Restricted Sales Regions
-  withdrawalWallet  String? // Default Wallet Address for Withdrawals
+  currency          String         @default("USD")
+  acceptedCoins     String[]
+  restrictedRegions String[]       @default([])
+  withdrawalWallet  String?
   primaryWalletId   String?        @unique
-  enableTax         Boolean        @default(true) // Tax toggle switch
+  enableTax         Boolean        @default(true)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
-  slug              String         @unique
   ownerId           String
+  slug              String         @unique
   owner             User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   plans             Plan[]
   subscriptions     Subscription[]
   Wallet            Wallet[]
 }
 
-enum TransactionStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
 model Transaction {
-  id             String        @id @unique @default(cuid())
+  id             String            @id @unique @default(cuid())
   userId         String
   subscriptionId String?
-  total         Float
   currency       String
   type           String
-  createdAt      DateTime      @default(now())
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  user           User          @relation(fields: [userId], references: [id])
-  status        TransactionStatus @default(PENDING)
-  items         Json              // Array of {symbol: string, amount: number}
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  user          User              @relation(fields: [userId], references: [id])
+  createdAt      DateTime          @default(now())
+  items          Json
+  total          Float
+  updatedAt      DateTime          @updatedAt
+  status         TransactionStatus @default(PENDING)
+  subscription   Subscription?     @relation(fields: [subscriptionId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -139,24 +135,24 @@ model Plan {
   id            String         @id @unique @default(cuid())
   companyId     String
   name          String
-  description   String?
-  acceptedCoins String[]
-  billingCycles BillingCycle[]
-  slug          String
   features      Json?
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  subscriptions Subscription[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  acceptedCoins String[]
+  description   String?
   status        PlanStatus     @default(PRIVATE)
+  slug          String
+  billingCycles BillingCycle[]
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
 }
 
 model BillingCycle {
-  id       String   @id @default(cuid())
-  planId   String
-  cycle    Cycle
-  price    Float
-  plan     Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  planId String
+  cycle  Cycle
+  price  Float
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@unique([planId, cycle])
 }
@@ -167,17 +163,22 @@ model Subscription {
   companyId    String?
   planId       String
   billingCycle String
-  coinType     String[]
   startDate    DateTime
   renewalDate  DateTime
-  status       SubscriptionStatus @default(ACTIVE)
   createdAt    DateTime           @default(now())
-
-  // Relations
-  company      Company?      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  plan         Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
-  user         User?         @relation(fields: [userId], references: [id])
+  coinType     String[]
+  status       SubscriptionStatus @default(ACTIVE)
+  company      Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan         Plan               @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user         User?              @relation(fields: [userId], references: [id])
   transactions Transaction[]
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
 
 enum UserRole {
@@ -194,16 +195,16 @@ enum Cycle {
 }
 
 enum SubscriptionStatus {
-  ACTIVE // The subscription is active and renewing as expected.
-  PENDING // The subscription is being processed or awaiting confirmation.
-  CANCELED // The subscription has been canceled and will not renew.
-  EXPIRED // Optional: The subscription has ended due to non-renewal or expiration.
-  PAUSED // Optional: The subscription is temporarily paused but not canceled.
+  ACTIVE
+  PENDING
+  CANCELED
+  EXPIRED
+  PAUSED
 }
 
 enum PlanStatus {
-  ACTIVE    // Plan is published and visible to users
-  PRIVATE   // Plan is created but hidden from public view
-  ARCHIVED  // Plan is no longer in use but kept for record
-  DISABLED  // Plan is temporarily disabled
+  ACTIVE
+  PRIVATE
+  ARCHIVED
+  DISABLED
 }
