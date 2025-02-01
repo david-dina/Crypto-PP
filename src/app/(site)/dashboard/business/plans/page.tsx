@@ -79,6 +79,7 @@ export default function PlansPage() {
   };
 
   const refreshPlans = async () => {
+    setIsLoading(true);
     try {
       const plansResponse = await fetch("/api/business/plans/getplans", {
         method: "GET",
@@ -92,9 +93,11 @@ export default function PlansPage() {
 
       const plansData = await plansResponse.json();
       setPlans(plansData);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error refreshing plans:", error);
       toast.error("Failed to refresh plans");
+      setIsLoading(false);
     }
   };
 
@@ -126,7 +129,7 @@ export default function PlansPage() {
         <PlanTable 
           data={plans} 
           availableCoins={acceptedCoins}
-          onPlanDelete={refreshPlans}
+          onPlanUpdate={refreshPlans}
         />
       )}
     </DefaultLayout>

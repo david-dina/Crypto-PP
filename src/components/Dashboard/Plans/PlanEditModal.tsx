@@ -16,12 +16,14 @@ interface PlanEditModalProps {
   plan: Plan;
   onClose: () => void;
   availableCoins?: Token[];
+  onPlanUpdated: () => void;
 }
 
 const PlanEditModal: React.FC<PlanEditModalProps> = ({ 
   plan, 
-  onClose, 
-  availableCoins = []
+  onClose,
+  availableCoins = [],
+  onPlanUpdated,
 }: PlanEditModalProps) => {
   const [planName, setPlanName] = useState<string>(plan.name || "");
   const [planDescription, setPlanDescription] = useState<string>(plan.description || "");
@@ -33,10 +35,6 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
     const cyclesToUse = plan.billingCycles?.length 
       ? plan.billingCycles
       : allCycles;
-
-    console.log('Initial Plan:', plan);
-    console.log('Initial Billing Cycles:', plan.billingCycles);
-    console.log('Initial Billing Cycles Prices:', plan.billingCyclesPrices);
 
     const initialBillingCycles = cyclesToUse.map(cycle => ({
       cycle,
@@ -131,7 +129,6 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
         body: JSON.stringify(payload),
       });
 
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Update plan error response:', errorText);
@@ -141,6 +138,14 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
       }
       
       toast.success("Plan updated successfully");
+      
+      // Call onPlanUpdated to refresh the table
+      onPlanUpdated();
+      
+      // Close the modal after successful update
+      onClose();
+      
+      return true;
     } catch (error) {
       console.error("Error saving plan:", error);
       
@@ -150,6 +155,7 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
       } else {
         toast.error("Failed to save plan");
       }
+      return false;
     } finally {
       setLoading(false);
     }
@@ -168,7 +174,10 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-6">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleSave();
+        }} className="space-y-6">
           {/* Plan Name */}
           <div>
             <label className="block mb-2 text-gray-900 dark:text-white">Plan Name</label>
@@ -259,11 +268,6 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
           {/* Accepted Coins */}
           <div>
             <label className="block mb-2 text-gray-900 dark:text-white">Accepted Coins</label>
-            {loading ? (
-              <div className="text-gray-500 dark:text-gray-400">
-                Loading available coins...
-              </div>
-            ) : (
               <>
                 {availableCoinsState.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -300,7 +304,6 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
                   </div>
                 )}
               </>
-            )}
           </div>
 
           {/* Submit Buttons */}

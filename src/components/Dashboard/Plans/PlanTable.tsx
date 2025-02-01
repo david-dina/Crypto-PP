@@ -12,9 +12,8 @@ import {Token} from 'tokenconfigs'
 
 interface PlanTableProps {
   data: Plan[];
-  onPlanUpdate?: (updatedPlan: Plan) => Promise<void>;
-  onPlanDelete?: () => Promise<void>;
   availableCoins?: Token[];
+  onPlanUpdate: () => void;
 }
 
 const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
@@ -22,7 +21,7 @@ const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
 const PlanTable = ({ 
   data, 
   availableCoins = [],
-  onPlanDelete
+  onPlanUpdate
 }: PlanTableProps) => {
   const [currentFilter, setCurrentFilter] = useState<{
     cycles?: Cycle[];
@@ -77,13 +76,8 @@ const PlanTable = ({
     setPlanToDelete(plan);
   };
 
-  const handleConfirmDelete = async (planId: string) => {
+  const handleConfirmDelete = async () => {
     try {
-      // If a delete callback is provided, call it
-      if (onPlanDelete) {
-        await onPlanDelete();
-      }
-      
       // Close the delete modal
       setPlanToDelete(null);
     } catch (error) {
@@ -311,6 +305,7 @@ const PlanTable = ({
           }}
           availableCoins={availableCoins}
           onClose={handleCloseModal}
+          onPlanUpdated={onPlanUpdate}
         />
       )}
 
