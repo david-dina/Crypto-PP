@@ -45,13 +45,41 @@ const WalletTable = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
 
+  const getConnectedWalletAddresses = async () => {
+    const { wallets } = onboardInstance.state.get();
+    if (wallets.length === 0) {
+      return []
+    }
+    const walletList = []
+    console.log(wallets)
+    for (const wallet of wallets) {
+      try {
+        const { provider, label, accounts, icon } = wallet;
+        const address = accounts[0].address;
+        const blockchain = await requireSupportedChain(provider);
+        const providerName = label;
+
+        walletList.push({ address, blockchain, provider: providerName, providerImage: icon });
+      } catch (error: any) {
+        // Handle chain validation error
+        toast.error(error.message || "Please connect to a supported network");
+        return []; // Exit early if chain validation fails
+      }
+    }
+    return walletList
+  }
+
   // Define fetchAllWallets before using it in any hooks
   const fetchAllWallets = async () => {
     setIsUpdating(true);
     try {
+      if (onboardInstance === null) return
+      const connectedWallets = await getConnectedWalletAddresses();
+      if (connectedWallets.length === 0) { setAllDBWallets([]); setIsUpdating(false); return } // Implement this function
       const response = await fetch("/api/wallets/getWallets", {
-        method: "GET",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({wallets:connectedWallets }), // Include wallet addresses
       });
       if (!response.ok) {
         console.log("Failed to fetch wallets from server");
@@ -151,7 +179,7 @@ const WalletTable = () => {
 
   useEffect(() => {
     fetchAllWallets()
-  }, [])
+  }, [onboardInstance])
 
   useEffect(() => {
     if (loading) return;
@@ -204,10 +232,9 @@ const WalletTable = () => {
 
   }, [loading]);
 
-
   useEffect(() => {
     if (!onboardInstance) return;
-    
+  
     const subscription = onboardInstance.state.select('wallets').subscribe((updatedWallets) => {
       // Handle wallet disconnections
       if (updatedWallets.length === 0) {
@@ -216,49 +243,80 @@ const WalletTable = () => {
         setActiveChainId(null);
         return;
       }
-
-      // Get addresses and chains of currently connected wallets
-      const connectedWalletsWithChains = updatedWallets.map(wallet => ({
-        address: wallet.accounts[0].address.toLowerCase(),
-        chainId: parseInt(wallet.chains[0].id, 16)
-      }));
-
-      // Update displayed wallets to match connected ones and their chains
-      setWalletData(prev => 
-        prev.filter(wallet => {
-          const connectedWallet = connectedWalletsWithChains.find(
-            w => w.address === wallet.address.toLowerCase()
-          );
-          if (!connectedWallet) return false;
-
-          // Match the blockchain name with the chain ID
-          const chainMatches = (chainId: number) => {
-            if (chainId === 1 && wallet.blockchain.toLowerCase() === 'ethereum') return true;
-            if (chainId === 11155111 && wallet.blockchain.toLowerCase() === 'sepolia') return true;
-            return false;
-          };
-
-          return chainMatches(connectedWallet.chainId);
-        })
-      );
-
-      // Handle primary wallet and chain updates
-      const firstWallet = updatedWallets[0];
-      if (firstWallet) {
-        const newAddress = firstWallet.accounts[0].address;
-        const newChainId = parseInt(firstWallet.chains[0].id, 16);
-
-        setActiveWalletAddress(newAddress);
-        setActiveChainId(newChainId);
-        setPrimaryWallet(newAddress);
-      }
-
-      // Refresh wallet data from database
-      debouncedFetchAllWallets();
+  
+      // Process all connected wallets
+      const connectedWalletsWithChains = updatedWallets
+        .filter(wallet => wallet.accounts?.[0]?.address && wallet.chains?.[0]?.id) // Ensure valid data
+        .map(wallet => ({
+          address: wallet.accounts[0].address.toLowerCase(),
+          chainId: parseInt(wallet.chains[0].id, 16),
+          provider: wallet.label || 'Unknown', // Add provider info
+          connected: true
+        }));
+  
+      // Update state with a single setState call to prevent race conditions
+      setWalletData(prev => {
+        // Find disconnected wallets
+        const disconnectedWallets = prev.filter(
+          prevWallet => !connectedWalletsWithChains.some(
+            newWallet => newWallet.address === prevWallet.address
+          )
+        );
+  
+        // Find newly connected wallets
+        const newWallets = connectedWalletsWithChains.filter(
+          newWallet => !prev.some(
+            prevWallet => prevWallet.address === newWallet.address
+          )
+        );
+  
+        // Update existing wallets
+        const updatedExistingWallets = prev
+          .filter(wallet => !disconnectedWallets.includes(wallet))
+          .map(wallet => {
+            const updatedWallet = connectedWalletsWithChains.find(
+              w => w.address === wallet.address
+            );
+            return updatedWallet ? { ...wallet, ...updatedWallet } : wallet;
+          });
+  
+        // Combine everything
+        const finalWallets = [
+          ...updatedExistingWallets,
+          ...newWallets.map(wallet => ({
+            address: wallet.address,
+            blockchain: getBlockchainName(wallet.chainId),
+            provider: wallet.provider,
+            connected: true,
+            chainId: wallet.chainId
+          }))
+        ];
+  
+  
+        // Update active wallet if needed
+        if (finalWallets.length > 0 && (!activeWalletAddress || !finalWallets.some(w => w.address === activeWalletAddress))) {
+          setActiveWalletAddress(finalWallets[0].address);
+          setActiveChainId(finalWallets[0].chainId);
+        }
+  
+        return finalWallets;
+      });
     });
-
+  
     return () => subscription.unsubscribe();
   }, [onboardInstance]);
+  
+  // Helper function to sync with back
+  
+  // Helper function to get blockchain name
+  const getBlockchainName = (chainId: number): string => {
+    const chainMap: Record<number, string> = {
+      1: 'Ethereum',
+      11155111: 'Sepolia',
+      // Add more chains as needed
+    };
+    return chainMap[chainId] || 'Unknown';
+  };
 
   const handleWalletConnection = async () => {
     if (!onboardInstance) return;

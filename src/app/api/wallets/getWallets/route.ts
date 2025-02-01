@@ -2,57 +2,44 @@
 import { prisma } from "@/libs/prismaDb";
 import { isAuthorized } from "@/libs/isAuthorized";
 import { Prisma } from "@prisma/client";
+import {saveWallet} from "@/libs/WalletSave";
+import {WalletData} from "@/types/Wallet";
 
-export async function GET(req: Request) {
+// Input type for wallet connections
+export async function POST(req: Request) {
   try {
-    // Check if the user is authorized
+    // Check authorization
     const { user } = await isAuthorized();
     if (!user) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // Parse pagination parameters
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    console.log("parsing request body")
+    const { wallets} = await req.json();
+    console.log(wallets)
 
-    // Determine query filters based on user role
-    const whereClause = user.role === "BUSINESS"
-      ? { companyId: (await prisma.company.findFirst({
-            where: { ownerId: user.id },
-          }))?.id } // Fetch company ID
-      : { userId: user.id };
+    // Process each wallet connection
+    const results = await Promise.all(wallets.map(async (connection) => {
+      // Try to find the existing wallet
+      let wallet = await prisma.wallet.findFirst({
+        where: {
+          address: connection.address,
+          provider: connection.provider,
+          blockchain: connection.blockchain,
+        },
+      });
 
-    if (!whereClause) {
-      return new Response("No wallets found", { status: 404 });
-    }
-
-    // Count total wallets
-    const total = await prisma.wallet.count({
-      where: whereClause,
-    });
-
-    // Fetch paginated wallets
-    const wallets = await prisma.wallet.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        address: true,
-        blockchain: true,
-        balance: true,
-        provider: true,
-        providerImage:true,
-        updatedAt: true,
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    // Fetch tokenBalances for the wallets
-    const walletIds = wallets.map((wallet) => wallet.id);
-    const tokenBalances = await prisma.tokenBalance.findMany({
+      // If the wallet doesn't exist, create it using saveWallet
+      if (!wallet) {
+        const { wallet, tokens } = await saveWallet(connection, user);
+        if (!wallet || !tokens) {
+         return {wallet:null, tokens:[]}
+        }
+        return { wallet,tokens};
+      }
+    const tokens = await prisma.tokenBalance.findMany({
       where: {
-        walletId: { in: walletIds },
+        walletId: wallet.id,
       },
       select: {
         walletId: true,
@@ -61,32 +48,43 @@ export async function GET(req: Request) {
         symbol: true,
       },
     });
+      await prisma.walletActivity.upsert({
+        where: { userId_walletId: { userId: user.id, walletId: wallet.id } },
+        update: {
+            lastUsed: new Date()
+        },
+        create: {   
+            walletId: wallet.id,
+            userId: user.id,
+            lastUsed: new Date()
+        }
+    })
+      return { wallet,tokens};
+    }));
 
-    // Combine wallets with their tokenBalances
-    const formattedWallets = wallets.map((wallet) => {
-      const nativeTokenSymbol = getNativeTokenSymbol(wallet.blockchain);
+    // Filter out null wallets
+    const filteredResults = results.filter(result => result.wallet !== null);
 
-      return {
-        ...wallet,
-        tokenBalances: tokenBalances
-          .filter((tb) => tb.walletId === wallet.id && tb.tokenName !== nativeTokenSymbol) // Match balances by wallet ID and exclude native tokens
-          .map((tb) => ({
-            tokenName: tb.tokenName,
-            walletId: tb.walletId,
-            balance: tb.balance,
-            symbol: tb.symbol, // Include the icon field
-          })), // Map to remove walletId from balances
-      };
-    });
+    // Transform the results array to match the WalletData interface and return the formatted results
+    const formattedResults: WalletData[] = filteredResults.map(({ wallet, tokens}) => ({
+      id: wallet.id,
+      address: wallet.address,
+      blockchain: wallet.blockchain,
+      provider: wallet.provider,
+      providerImage: wallet.providerImage || undefined,
+      balance: wallet.balance.toString(), // Ensure this is a string
+      updatedAt: wallet.updatedAt.toISOString(), // Ensure this is a string
+      tokenBalances: tokens.map(token => ({
+        tokenName: token.tokenName,
+        balance: token.balance.toString(), // Convert balance to string if necessary
+        icon: token.symbol || undefined // Assuming icon is optional
+      }))
+    }));
 
-    // Return the wallets with pagination metadata
     return new Response(
       JSON.stringify({
         success: true,
-        data: formattedWallets,
-        page,
-        limit,
-        total,
+        data: formattedResults
       }),
       { status: 200 }
     );
