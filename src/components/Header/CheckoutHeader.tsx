@@ -75,14 +75,17 @@ const CheckoutHeader = (props: {
         </div> */}
 
         <div className="flex items-center justify-between gap-2 2xsm:gap-4 lg:w-full">
+          <div>
+            {/* Placeholder for any left-side content */}
+          </div>
 
-          <ul className="flex items-center gap-2 2xsm:gap-4">
+          <ul className="flex items-center gap-2 2xsm:gap-4 ml-auto">
             {/* <!-- Dark Mode Toggle --> */}
             <DarkModeSwitcher />
             {/* <!-- Dark Mode Toggle --> */}
 
             {/* <!-- Notification Menu Area --> */}
-            {/* <DropdownNotification /> */}
+            {/*<DropdownNotification /> */}
             {/* <!-- Notification Menu Area --> */}
 
             {/* <!-- User Area --> */}
