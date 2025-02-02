@@ -85,8 +85,28 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
     setBillingCycles(updatedCycles);
   };
 
+  // Separate current coins into active and legacy
+  const [activeTokens, setActiveTokens] = useState<Token[]>([]);
+  const [legacyTokens, setLegacyTokens] = useState<string[]>(plan.acceptedCoins || []);
+
+  useEffect(() => {
+    // Filter available coins into active and legacy
+    const active = availableCoinsState.filter(coin => 
+      plan.tokens?.some(token => token.symbol === coin.symbol)
+    );
+    setActiveTokens(active);
+  }, [availableCoinsState, plan.tokens]);
+
   const toggleCoin = (coinSymbol: string) => {
     setSelectedCoins(prev => 
+      prev.includes(coinSymbol)
+        ? prev.filter(coin => coin !== coinSymbol)
+        : [...prev, coinSymbol]
+    );
+  };
+
+  const toggleLegacyCoin = (coinSymbol: string) => {
+    setLegacyTokens(prev => 
       prev.includes(coinSymbol)
         ? prev.filter(coin => coin !== coinSymbol)
         : [...prev, coinSymbol]
@@ -116,7 +136,7 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
         features: plan.features,
         billingCycles: billingCycles.map(bc => bc.cycle),
         billingCyclesPrices,
-        acceptedCoins: selectedCoins,
+        acceptedCoins: [...new Set([...selectedCoins, ...legacyTokens])], // Combine both active and legacy tokens
         status: planStatus
       };
 
@@ -265,45 +285,89 @@ const PlanEditModal: React.FC<PlanEditModalProps> = ({
             </div>
           </div>
 
-          {/* Accepted Coins */}
+          {/* Active Tokens */}
           <div>
-            <label className="block mb-2 text-gray-900 dark:text-white">Accepted Coins</label>
-              <>
-                {availableCoinsState.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    No coins available
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {availableCoinsState.map((coin) => (
-                      <button
-                        key={`${coin.symbol}-${coin.address}`}
-                        type="button"
-                        onClick={() => toggleCoin(coin.symbol)}
-                        className={`px-4 py-2 rounded border flex items-center gap-2 ${
-                          selectedCoins.includes(coin.symbol)
-                            ? "bg-primary text-white border-primary"
-                            : "bg-gray-200 text-black hover:bg-gray-300"
-                        }`}
-                      >
-                        {coin.logoUrl && (
-                          <img
-                            src={coin.logoUrl}
-                            alt={coin.name}
-                            className="w-4 h-4 mr-2"
-                          />
-                        )}
-                        {coin.symbol}
-                        {coin.isStablecoin && (
-                          <span className="text-xs bg-green-500 bg-opacity-20 text-green-500 px-2 py-0.5 rounded ml-2">
-                            Stable
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
+            <label className="block mb-2 text-gray-900 dark:text-white">Active Tokens</label>
+            {activeTokens.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No active tokens available
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {activeTokens.map((token) => (
+                  <button
+                    key={`${token.symbol}-${token.address}`}
+                    type="button"
+                    onClick={() => toggleCoin(token.symbol)}
+                    className={`px-4 py-2 rounded border flex items-center gap-2 ${
+                      selectedCoins.includes(token.symbol)
+                        ? "bg-primary text-white border-primary"
+                        : "bg-gray-200 text-black hover:bg-gray-300"
+                    }`}
+                  >
+                    {token.logoUrl && (
+                      <img
+                        src={token.logoUrl}
+                        alt={token.name}
+                        className="w-4 h-4 mr-2"
+                      />
+                    )}
+                    {token.symbol}
+                    {token.isStablecoin && (
+                      <span className="text-xs bg-green-500 bg-opacity-20 text-green-500 px-2 py-0.5 rounded ml-2">
+                        Stable
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Legacy Tokens */}
+          <div className="mt-6">
+            <label className="block mb-2 text-gray-900 dark:text-white flex items-center">
+              Legacy Tokens
+              <span className="ml-2 text-sm text-gray-500">(from acceptedCoins)</span>
+            </label>
+            {availableCoinsState
+              .filter(coin => !activeTokens.some(token => token.symbol === coin.symbol))
+              .length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No legacy tokens available
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {availableCoinsState
+                  .filter(coin => !activeTokens.some(token => token.symbol === coin.symbol))
+                  .map((coin) => (
+                    <button
+                      key={`legacy-${coin.symbol}-${coin.address}`}
+                      type="button"
+                      onClick={() => toggleLegacyCoin(coin.symbol)}
+                      className={`px-4 py-2 rounded border flex items-center gap-2 ${
+                        legacyTokens.includes(coin.symbol)
+                          ? "bg-blue-500 text-white border-blue-500"
+                          : "bg-gray-200 text-black hover:bg-gray-300"
+                      }`}
+                    >
+                      {coin.logoUrl && (
+                        <img
+                          src={coin.logoUrl}
+                          alt={coin.name}
+                          className="w-4 h-4 mr-2"
+                        />
+                      )}
+                      {coin.symbol}
+                      {coin.isStablecoin && (
+                        <span className="text-xs bg-green-500 bg-opacity-20 text-green-500 px-2 py-0.5 rounded ml-2">
+                          Stable
+                        </span>
+                      )}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
 
           {/* Submit Buttons */}

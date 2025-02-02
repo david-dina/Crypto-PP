@@ -53,16 +53,15 @@ export default function PlansPage() {
       const plansData = await plansResponse.json();
       const walletsData = await walletsResponse.json();
 
-      // Determine unique coins from wallets
+      // Determine unique coins from wallets and legacy accepted coins
       const uniqueTokens = new Map<string, Token>();
 
-      // Safely handle wallet data
+      // First add tokens from connected wallets
       const wallets = walletsData.data || [];
       wallets.forEach((wallet: any) => {
         const chainConfig = getChainTokenConfigByKey(wallet.blockchain.toLowerCase());
         if (chainConfig) {
           chainConfig.tokens.forEach(token => {
-            // Use symbol as key to avoid duplicates across chains
             if (!uniqueTokens.has(token.symbol)) {
               uniqueTokens.set(token.symbol, token);
             }
@@ -70,10 +69,67 @@ export default function PlansPage() {
         }
       });
 
-      const availableCoins = Array.from(uniqueTokens.values());
-      console.log('Fetched data:', { plansData, walletsData, availableCoins });
+      // Then add legacy accepted coins from plans
+      plansData.forEach((plan: Plan) => {
+        const acceptedCoins = plan.acceptedCoins || [];
+        acceptedCoins.forEach(symbol => {
+          if (!uniqueTokens.has(symbol)) {
+            // Try to find token config from any chain
+            const chains = ['ethereum', 'sepolia']; // Add more chains as needed
+            for (const chain of chains) {
+              const chainConfig = getChainTokenConfigByKey(chain);
+              if (chainConfig) {
+                const token = chainConfig.tokens.find(t => t.symbol === symbol);
+                if (token) {
+                  uniqueTokens.set(symbol, token);
+                  break;
+                }
+              }
+            }
+          }
+        });
+      });
 
-      setPlans(plansData || []);
+      const availableCoins = Array.from(uniqueTokens.values());
+
+      // Update plans data with active/inactive coin status
+      const updatedPlans = plansData.map((plan: Plan) => ({
+        ...plan,
+        tokens: (plan.tokens || []).map(token => ({
+          ...token,
+          isActive: availableCoins.some(availableToken => availableToken.symbol === token.symbol),
+          activeWallets: wallets
+            .filter(wallet => {
+              const chainConfig = getChainTokenConfigByKey(wallet.blockchain.toLowerCase());
+              return chainConfig && chainConfig.tokens.some(t => t.symbol === token.symbol);
+            })
+            .map(wallet => ({
+              address: wallet.address,
+              blockchain: wallet.blockchain,
+            }))
+        })),
+        // Also include legacy acceptedCoins in the token list
+        legacyTokens: (plan.acceptedCoins || []).map(symbol => {
+          const token = availableCoins.find(t => t.symbol === symbol);
+          return {
+            symbol,
+            isActive: !!token,
+            activeWallets: token ? wallets
+              .filter(wallet => {
+                const chainConfig = getChainTokenConfigByKey(wallet.blockchain.toLowerCase());
+                return chainConfig && chainConfig.tokens.some(t => t.symbol === symbol);
+              })
+              .map(wallet => ({
+                address: wallet.address,
+                blockchain: wallet.blockchain,
+              })) : []
+          };
+        })
+      }));
+
+      console.log('Fetched data:', { updatedPlans, walletsData, availableCoins });
+
+      setPlans(updatedPlans);
       setAcceptedCoins(availableCoins);
     } catch (err) {
       console.error("Error fetching data:", err);

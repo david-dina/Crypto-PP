@@ -213,17 +213,17 @@ const PlanTable = ({
         <table className="w-full table-auto">
           <thead>
             <tr className="border-b border-[#1C1C24]">
-              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Plan ID</th>
-              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Name</th>
-              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Billing Cycles</th>
-              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Status</th>
-              <th className="py-4 px-4 text-right text-sm font-medium text-gray-500 dark:text-gray-400 w-1/4">Actions</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Plan ID</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Name</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Billing Cycles</th>
+              <th className="py-4 px-4 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Status</th>
+              <th className="py-4 px-4 text-right text-sm font-medium text-gray-500 dark:text-gray-400">Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginatedPlans.map((plan) => (
               <tr key={plan.id} className="border-t border-[#1C1C24]">
-                <td className="py-4 px-4 w-1/4">
+                <td className="py-4 px-4">
                   <span 
                     className="text-sm text-gray-900 dark:text-white"
                     title={plan.id}
@@ -231,12 +231,12 @@ const PlanTable = ({
                     {plan.id.slice(0, 4)}...{plan.id.slice(-4)}
                   </span>
                 </td>
-                <td className="py-4 px-4 w-1/4">
+                <td className="py-4 px-4">
                   <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {plan.name}
                   </span>
                 </td>
-                <td className="py-4 px-4 w-1/4">
+                <td className="py-4 px-4">
                   <div className="flex flex-wrap gap-2">
                     {plan.billingCycles.map((cycle, index) => (
                       <span 
@@ -248,7 +248,7 @@ const PlanTable = ({
                     ))}
                   </div>
                 </td>
-                <td className="py-4 px-4 w-1/4">
+                <td className="py-4 px-4">
                   <span 
                     className={`text-sm ${
                       plan.status === 'ACTIVE' ? 'text-green-700 dark:text-green-400' :
