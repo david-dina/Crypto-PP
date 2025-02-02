@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plan } from "@/types/Plan";
 import PlansFilter from "./PlansFilter";
 import PlanEditModal from "./PlanEditModal";
@@ -8,7 +8,9 @@ import DeletePlanModal from "./DeletePlanModal";
 import { PAGINATION_CONFIG } from "@/config/constants";
 import { Cycle, PlanStatus } from "@prisma/client";
 import toast from 'react-hot-toast';
-import {Token} from 'tokenconfigs'
+import { Token } from 'tokenconfigs'
+import { initOnboard, getConnectedWalletAddresses } from "@/libs/onboardConfig";
+import { WalletData } from "@/types/Wallet";
 
 interface PlanTableProps {
   data: Plan[];
@@ -31,6 +33,43 @@ const PlanTable = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [planToDelete, setPlanToDelete] = useState<Plan | null>(null);
+  
+  // New state for wallet data
+  const [connectedWallets, setConnectedWallets] = useState<WalletData[]>([]);
+  const [walletLoading, setWalletLoading] = useState(true);
+
+  // Fetch connected wallets on component mount
+  useEffect(() => {
+    const fetchConnectedWallets = async () => {
+      try {
+        setWalletLoading(true);
+        const onboard = initOnboard();
+        const walletAddresses = await getConnectedWalletAddresses(onboard);
+        
+        if (walletAddresses.length > 0) {
+          const response = await fetch("/api/wallets/getWallets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ wallets: walletAddresses }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch wallet data');
+          }
+
+          const { data: walletData } = await response.json();
+          setConnectedWallets(walletData);
+        }
+      } catch (error) {
+        console.error('Error fetching connected wallets:', error);
+        toast.error('Failed to retrieve wallet data');
+      } finally {
+        setWalletLoading(false);
+      }
+    };
+
+    fetchConnectedWallets();
+  }, []);
 
   // Filtering logic
   const filteredPlans = data.filter(plan => {

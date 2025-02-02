@@ -8,7 +8,7 @@ import { Plan } from "@/types/Plan";
 import { Token } from "@/libs/tokenConfig";
 import toast from "react-hot-toast";
 import { getTokensByChainKey, getChainTokenConfigByKey } from "@/libs/tokenConfig";
-
+import { initOnboard, getConnectedWalletAddresses } from "@/libs/onboardConfig";
 //export const metadata = {
  // title: "Plans Dashboard",
  // description: "View and manage your subscription plans",
@@ -24,14 +24,19 @@ export default function PlansPage() {
     setIsLoading(true);
     setError(null);
     try {
+      // First, get connected wallet addresses
+      const onboard = initOnboard();
+      const walletAddresses = await getConnectedWalletAddresses(onboard);
+
       const [plansResponse, walletsResponse] = await Promise.all([
         fetch("/api/business/plans/getplans", {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         }),
         fetch("/api/wallets/getWallets", {
-          method: "GET",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallets: walletAddresses }),
         })
       ]);
 
@@ -51,7 +56,9 @@ export default function PlansPage() {
       // Determine unique coins from wallets
       const uniqueTokens = new Map<string, Token>();
 
-      walletsData.data.forEach((wallet: any) => {
+      // Safely handle wallet data
+      const wallets = walletsData.data || [];
+      wallets.forEach((wallet: any) => {
         const chainConfig = getChainTokenConfigByKey(wallet.blockchain.toLowerCase());
         if (chainConfig) {
           chainConfig.tokens.forEach(token => {
@@ -64,7 +71,7 @@ export default function PlansPage() {
       });
 
       const availableCoins = Array.from(uniqueTokens.values());
-      console.log(plansData,walletsData,availableCoins)
+      console.log('Fetched data:', { plansData, walletsData, availableCoins });
 
       setPlans(plansData || []);
       setAcceptedCoins(availableCoins);
