@@ -41,77 +41,95 @@ const WalletTable = () => {
   const [onboardInstance, setOnboardInstance] = useState<any>(null);
   const [activeWalletAddress, setActiveWalletAddress] = useState<string | null>(null);
   const [activeChainId, setActiveChainId] = useState<number | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedWallets, setSelectedWallets] = useState<string[]>([]);
 
-  const getConnectedWalletAddresses = async () => {
-    const { wallets } = onboardInstance.state.get();
+  const getConnectedWalletAddresses = async (onboard: any) => {
+    const { wallets } = onboard.state.get();
+    console.log('Raw onboard wallets:', wallets);
     if (wallets.length === 0) {
-      return []
+      console.log('No connected wallets found');
+      return [];
     }
-    const walletList = []
-    console.log(wallets)
+    const walletList = [];
     for (const wallet of wallets) {
       try {
         const { provider, label, accounts, icon } = wallet;
+        console.log('Processing wallet:', { label, accounts });
         const address = accounts[0].address;
         const blockchain = await requireSupportedChain(provider);
         const providerName = label;
 
         walletList.push({ address, blockchain, provider: providerName, providerImage: icon });
       } catch (error: any) {
-        // Handle chain validation error
+        console.error('Wallet processing error:', error);
         toast.error(error.message || "Please connect to a supported network");
-        return []; // Exit early if chain validation fails
+        return [];
       }
     }
-    return walletList
+    console.log('Processed wallet list:', walletList);
+    return walletList;
   }
 
-  // Define fetchAllWallets before using it in any hooks
-  const fetchAllWallets = async () => {
-    setIsUpdating(true);
+  const formatWalletData = (wallet: any) => {
+    console.log('Formatting wallet data:', wallet);
+    return {
+      ...wallet,
+      balance: wallet.balance ? parseFloat(wallet.balance).toFixed(4) : '0.0000',
+      lastRefreshed: wallet.lastRefreshed ? new Date(wallet.lastRefreshed).toISOString() : new Date().toISOString(),
+      network: wallet.blockchain || 'Unknown',
+      provider: wallet.provider || 'Unknown',
+    };
+  };
+
+  const fetchAllWallets = async (onboard?: any) => {
+    setLoading(true);
     try {
-      if (onboardInstance === null) return
-      const connectedWallets = await getConnectedWalletAddresses();
-      if (connectedWallets.length === 0) { setAllDBWallets([]); setIsUpdating(false); return } // Implement this function
+      const effectiveOnboard = onboard || onboardInstance;
+      if (!effectiveOnboard) {
+        console.log('Onboard instance is null, skipping fetch');
+        return;
+      }
+      
+      const connectedWallets = await getConnectedWalletAddresses(effectiveOnboard);
+      console.log('Connected wallets:', connectedWallets);
+      
+      if (connectedWallets.length === 0) {
+        console.log('No connected wallets, clearing state');
+        setAllDBWallets([]);
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch("/api/wallets/getWallets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({wallets:connectedWallets }), // Include wallet addresses
+        body: JSON.stringify({ wallets: connectedWallets }),
       });
+
       if (!response.ok) {
-        console.log("Failed to fetch wallets from server");
+        console.error("Failed to fetch wallets:", response.status, response.statusText);
         toast.error("Failed to fetch wallets from server");
         return;
       }
 
       const data = await response.json();
-      setAllDBWallets(data.data);
+      console.log('Raw API response:', data);
+      
+      const formattedData = data.data.map(formatWalletData);
+      console.log('Formatted wallet data:', formattedData);
+      
+      setAllDBWallets(formattedData);
+      
     } catch (err) {
-      console.error(err);
-      setError(String(err));
+      console.error('Error fetching wallets:', err);
+      toast.error("Failed to fetch wallets");
     } finally {
-      setIsUpdating(false);
       setLoading(false);
+      
     }
   };
 
-  // Now we can define the debounced version
-  const [debouncedFetchAllWallets] = useState(() => {
-    const debounce = (fn: Function, ms = 1000) => {
-      let timeoutId: ReturnType<typeof setTimeout>;
-      return function (...args: any[]) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn.apply(null, args), ms);
-      };
-    };
-    
-    return debounce(fetchAllWallets);
-  });
-
-  // Update saveWalletToDatabase to use fetchAllWallets instead of fetchWallets
   const saveWalletToDatabase = async (walletList: { 
     address: string; 
     blockchain: string; 
@@ -119,6 +137,7 @@ const WalletTable = () => {
     providerImage?: string; 
   }[]) => {
     try {
+      console.log('Saving wallets to database:', walletList);
       const response = await fetch('/api/wallets/saveWallet', {
         method: 'POST',
         headers: {
@@ -139,15 +158,30 @@ const WalletTable = () => {
       }
       
       toast.success("Wallets connected successfully");
-      fetchAllWallets(); // Changed from fetchWallets to fetchAllWallets
+      await fetchAllWallets(); // Fetch updated wallet list after saving
     } catch (error) {
       console.error('Error saving wallets to database:', error);
       toast.error("Failed to connect wallet");
     }
   };
 
+  const [debouncedFetchAllWallets] = useState(() => {
+    const debounce = (fn: Function, ms = 1000) => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return function (...args: any[]) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(null, args), ms);
+      };
+    };
+    
+    return debounce(fetchAllWallets);
+  });
+
   useEffect(() => {
-    const initOnboard = () => {
+    let walletsSub: any = null;
+
+    const initOnboard = async () => {
+      console.log('Initializing onboard...');
       const onboard = Onboard({
         wallets: [injected],
         chains: [
@@ -172,9 +206,33 @@ const WalletTable = () => {
           autoConnectAllPreviousWallet: true,
         },
       });
+      
       setOnboardInstance(onboard);
+      console.log('Onboard initialized successfully');
+      
+      // Subscribe to wallet changes after setting instance
+      walletsSub = onboard.state.select('wallets').subscribe((wallets) => {
+        console.log('Wallet state changed:', wallets);
+        if (wallets.length) {
+          const connectedWallets = wallets.map(w => ({
+            address: w.accounts[0].address,
+            provider: w.label,
+            blockchain: 'Sepolia', // Or determine from chain ID
+            providerImage: w.icon
+          }));
+          console.log('Processing connected wallets:', connectedWallets);
+          fetchAllWallets(onboard);
+        }
+      });
     };
+    
     initOnboard();
+
+    return () => {
+      if (walletsSub) {
+        walletsSub.unsubscribe();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -331,6 +389,7 @@ const WalletTable = () => {
         for (const wallet of wallets) {
           try {
             const { provider, label, accounts, icon } = wallet;
+            console.log('Processing wallet:', { label, accounts });
             const address = accounts[0].address;
             const blockchain = await requireSupportedChain(provider);
             const providerName = label;
@@ -338,6 +397,7 @@ const WalletTable = () => {
             walletList.push({ address, blockchain, provider: providerName, providerImage: icon });
           } catch (error: any) {
             // Handle chain validation error
+            console.error('Wallet processing error:', error);
             toast.error(error.message || "Please connect to a supported network");
             return; // Exit early if chain validation fails
           }
@@ -380,25 +440,31 @@ const WalletTable = () => {
   
 
   // Add this function to handle wallet disconnections
-  const handleWalletDisconnect = async (addresses: string[]) => {
-    if (!onboardInstance) return;
-
+  const handleWalletDisconnect = async () => {
     try {
-      // Get current wallets from onboard
-      const { wallets } = onboardInstance.state.get();
-      
-      // Disconnect each selected wallet
-      for (const address of addresses) {
-        const walletToDisconnect = wallets.find(
-          w => w.accounts[0].address.toLowerCase() === address.toLowerCase()
-        );
-        
-        if (walletToDisconnect) {
-          await onboardInstance.disconnectWallet({ label: walletToDisconnect.label });
-        }
+      if (!onboardInstance) {
+        console.error("Onboard instance not initialized");
+        return;
       }
 
-      // Refresh the wallet list
+      // Get currently connected wallets
+      const { wallets } = onboardInstance.state.get();
+      if (!wallets.length) {
+        console.log("No wallets to disconnect");
+        return;
+      }
+
+      // Disconnect all wallets
+      await Promise.all(
+        wallets.map(wallet => onboardInstance.disconnectWallet({ label: wallet.label }))
+      );
+
+      // Clear local state
+      setWalletData([]);
+      setSelectedWallets([]);
+      setExpandedWallet(null);
+
+      // Refresh the wallet list using debounced function
       debouncedFetchAllWallets();
       toast.success("Wallets disconnected successfully");
     } catch (error) {
@@ -452,7 +518,7 @@ const WalletTable = () => {
               setIsEditing(false);
               setSelectedWallets([]);
             }}
-            onDisconnectSelected={() => handleWalletDisconnect(selectedWallets)}
+            onDisconnectSelected={() => handleWalletDisconnect()}
           />
         </div>
       </div>

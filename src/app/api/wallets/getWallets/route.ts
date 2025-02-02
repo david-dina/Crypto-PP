@@ -11,15 +11,18 @@ export async function POST(req: Request) {
     // Check authorization
     const { user } = await isAuthorized();
     if (!user) {
+      console.error('Unauthorized user attempt');
       return new Response("Unauthorized", { status: 401 });
     }
 
-    console.log("parsing request body")
-    const { wallets} = await req.json();
-    console.log(wallets)
+    console.log("Parsing request body");
+    const { wallets } = await req.json();
+    console.log('Received wallets:', wallets);
 
     // Process each wallet connection
     const results = await Promise.all(wallets.map(async (connection) => {
+      console.log('Processing connection:', connection);
+      
       // Try to find the existing wallet
       let wallet = await prisma.wallet.findFirst({
         where: {
@@ -28,26 +31,34 @@ export async function POST(req: Request) {
           blockchain: connection.blockchain,
         },
       });
+      
+      console.log('Found existing wallet:', wallet);
 
       // If the wallet doesn't exist, create it using saveWallet
       if (!wallet) {
-        const { wallet, tokens } = await saveWallet(connection, user);
-        if (!wallet || !tokens) {
-         return {wallet:null, tokens:[]}
+        console.log('Creating new wallet for:', connection);
+        const { wallet: newWallet, tokens } = await saveWallet(connection, user);
+        if (!newWallet || !tokens) {
+          console.error('Failed to create wallet:', connection);
+          return {wallet: null, tokens: []};
         }
-        return { wallet,tokens};
+        console.log('Created new wallet:', newWallet);
+        return { wallet: newWallet, tokens };
       }
-    const tokens = await prisma.tokenBalance.findMany({
-      where: {
-        walletId: wallet.id,
-      },
-      select: {
-        walletId: true,
-        tokenName: true,
-        balance: true,
-        symbol: true,
-      },
-    });
+
+      const tokens = await prisma.tokenBalance.findMany({
+        where: {
+          walletId: wallet.id,
+        },
+        select: {
+          walletId: true,
+          tokenName: true,
+          balance: true,
+          symbol: true,
+        },
+      });
+      
+      console.log('Found tokens for wallet:', tokens);
       await prisma.walletActivity.upsert({
         where: { userId_walletId: { userId: user.id, walletId: wallet.id } },
         update: {

@@ -30,6 +30,18 @@ export async function saveWallet(wallet: Wallet, user: { id: string; role: strin
       where: { address, provider, blockchain },
     });
     if (walletCached) {
+      await prisma.walletActivity.upsert({
+        where: { userId_walletId: { userId: user.id, walletId: walletCached.id } },
+        update: {
+            lastUsed: new Date()
+        },
+        create: {   
+            walletId: walletCached.id,
+            userId: user.id,
+            lastUsed: new Date()
+            
+        }
+    })//TODO: need to return toekn here too
       return { wallet: walletCached, tokens: [] };
     }
   
