@@ -11,10 +11,10 @@ import toast from 'react-hot-toast';
 import { Token } from 'tokenconfigs'
 import { initOnboard, getConnectedWalletAddresses } from "@/libs/onboardConfig";
 import { WalletData } from "@/types/Wallet";
+import { getTokensByChainKey } from "@/libs/tokenConfig";
 
 interface PlanTableProps {
   data: Plan[];
-  availableCoins?: Token[];
   onPlanUpdate: () => void;
 }
 
@@ -22,13 +22,13 @@ const ITEMS_PER_PAGE = PAGINATION_CONFIG.ITEMS_PER_PAGE;
 
 const PlanTable = ({ 
   data, 
-  availableCoins = [],
   onPlanUpdate
 }: PlanTableProps) => {
   const [currentFilter, setCurrentFilter] = useState<{
     cycles?: Cycle[];
     status?: PlanStatus;
   }>({});
+  const [availableCoins, setAvailableCoins] = useState<Token[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -70,6 +70,21 @@ const PlanTable = ({
 
     fetchConnectedWallets();
   }, []);
+
+  // Effect to set available coins based on connected wallets
+  useEffect(() => {
+    // Determine unique coins from wallets using getTokensByChainKey
+    const uniqueTokens = new Set<Token>();
+
+    // Safely handle wallet data
+    const wallets = connectedWallets || [];
+    wallets.forEach((wallet: any) => {
+      const chainTokens = getTokensByChainKey(wallet.blockchain.toLowerCase());
+      chainTokens.forEach(token => uniqueTokens.add(token));
+    });
+
+    setAvailableCoins(Array.from(uniqueTokens));
+  }, [connectedWallets]);
 
   // Filtering logic
   const filteredPlans = data.filter(plan => {
